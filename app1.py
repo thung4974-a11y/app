@@ -137,7 +137,7 @@ def delete_user(conn, user_id):
 
 # ======================== GIAO DIỆN ========================
 def login_page(conn):
-    st.title("🎓 Hệ thống Quản lý Điểm Sinh viên")
+    st.title("Hệ thống Quản lý Điểm Sinh viên")
     st.subheader("Đăng nhập")
     
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -161,61 +161,61 @@ def login_page(conn):
         st.info("**Tài khoản mặc định:**\n- Username: admin\n- Password: admin123")
 
 def teacher_dashboard(conn):
-    st.sidebar.title(f"👨‍🏫 {st.session_state['fullname']}")
+    st.sidebar.title(f"{st.session_state['fullname']}")
     st.sidebar.write("Vai trò: **Giáo viên**")
     
-    if st.sidebar.button("🚪 Đăng xuất"):
+    if st.sidebar.button("Đăng xuất"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
     
     menu = st.sidebar.radio("Menu", [
-        "📊 Dashboard",
-        "📋 Quản lý điểm",
-        "➕ Thêm điểm",
-        "📥 Import dữ liệu",
-        "📤 Export dữ liệu",
-        "👥 Quản lý tài khoản",
-        "📈 Biểu đồ phân tích"
+        "Dashboard",
+        "Quản lý điểm",
+        "Thêm điểm",
+        "Import dữ liệu",
+        "Export dữ liệu",
+        "Quản lý tài khoản",
+        "Biểu đồ phân tích"
     ])
     
     df = load_grades(conn)
     
-    if menu == "📊 Dashboard":
+    if menu == "Dashboard":
         show_dashboard(df)
-    elif menu == "📋 Quản lý điểm":
+    elif menu == "Quản lý điểm":
         manage_grades(conn, df)
-    elif menu == "➕ Thêm điểm":
+    elif menu == "Thêm điểm":
         add_grade_form(conn)
-    elif menu == "📥 Import dữ liệu":
+    elif menu == "Import dữ liệu":
         import_data(conn)
-    elif menu == "📤 Export dữ liệu":
+    elif menu == "Export dữ liệu":
         export_data(df)
-    elif menu == "👥 Quản lý tài khoản":
+    elif menu == "Quản lý tài khoản":
         manage_users(conn)
-    elif menu == "📈 Biểu đồ phân tích":
+    elif menu == "Biểu đồ phân tích":
         show_charts(df)
 
 def student_dashboard(conn):
-    st.sidebar.title(f"👨‍🎓 {st.session_state['fullname']}")
+    st.sidebar.title(f"{st.session_state['fullname']}")
     st.sidebar.write("Vai trò: **Học sinh**")
     
-    if st.sidebar.button("🚪 Đăng xuất"):
+    if st.sidebar.button("Đăng xuất"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
     
     menu = st.sidebar.radio("Menu", [
-        "📋 Bảng điểm của tôi",
-        "🔍 Tra cứu điểm",
-        "📊 Thống kê chung"
+        "Bảng điểm của tôi",
+        "Tra cứu điểm",
+        "Thống kê chung"
     ])
     
     df = load_grades(conn)
     student_id = st.session_state.get('student_id', '')
     
-    if menu == "📋 Bảng điểm của tôi":
-        st.title("📋 Bảng điểm của tôi")
+    if menu == "Bảng điểm của tôi":
+        st.title("Bảng điểm của tôi")
         my_grades = df[df['mssv'] == student_id]
         if not my_grades.empty:
             st.dataframe(my_grades, use_container_width=True)
@@ -231,8 +231,8 @@ def student_dashboard(conn):
         else:
             st.warning("Chưa có dữ liệu điểm của bạn.")
     
-    elif menu == "🔍 Tra cứu điểm":
-        st.title("🔍 Tra cứu điểm sinh viên")
+    elif menu == "Tra cứu điểm":
+        st.title("Tra cứu điểm sinh viên")
         search_term = st.text_input("Nhập MSSV hoặc tên sinh viên")
         if search_term:
             results = df[df['mssv'].str.contains(search_term, case=False, na=False) | 
@@ -244,8 +244,8 @@ def student_dashboard(conn):
             else:
                 st.info("Không tìm thấy kết quả.")
     
-    elif menu == "📊 Thống kê chung":
-        st.title("📊 Thống kê chung")
+    elif menu == "Thống kê chung":
+        st.title("Thống kê chung")
         if not df.empty:
             col1, col2, col3, col4 = st.columns(4)
             with col1:
@@ -262,7 +262,7 @@ def student_dashboard(conn):
             st.plotly_chart(fig, use_container_width=True)
 
 def show_dashboard(df):
-    st.title("📊 Dashboard Tổng quan")
+    st.title("Dashboard Tổng quan")
     
     if df.empty:
         st.warning("Chưa có dữ liệu. Vui lòng import hoặc thêm dữ liệu.")
@@ -293,12 +293,12 @@ def show_dashboard(df):
         st.plotly_chart(fig, use_container_width=True)
 
 def manage_grades(conn, df):
-    st.title("📋 Quản lý điểm sinh viên")
+    st.title("Quản lý điểm sinh viên")
     
     # Bộ lọc
     col1, col2, col3 = st.columns(3)
     with col1:
-        search = st.text_input("🔍 Tìm kiếm (MSSV/Tên)")
+        search = st.text_input("Tìm kiếm (MSSV/Tên)")
     with col2:
         class_filter = st.selectbox("Lớp", ['Tất cả'] + list(df['class_name'].dropna().unique()))
     with col3:
@@ -338,7 +338,7 @@ def manage_grades(conn, df):
                 new_semester = st.text_input("Học kỳ", selected_row['semester'] or '')
                 new_year = st.text_input("Năm học", selected_row['academic_year'] or '')
             
-            if st.button("💾 Lưu thay đổi"):
+            if st.button("Lưu thay đổi"):
                 scores = [new_toan, new_ly, new_hoa, new_van, new_anh, new_tin, new_lap_trinh]
                 diem_tb = round(np.mean([s for s in scores if s > 0]), 2)
                 xep_loai = calculate_grade(diem_tb)
@@ -346,13 +346,13 @@ def manage_grades(conn, df):
                 st.success("Đã cập nhật!")
                 st.rerun()
         
-        if st.button("🗑️ Xóa bản ghi này", type="secondary"):
+        if st.button("Xóa bản ghi này", type="secondary"):
             delete_grade(conn, selected_id)
             st.success("Đã xóa!")
             st.rerun()
 
 def add_grade_form(conn):
-    st.title("➕ Thêm điểm sinh viên")
+    st.title("Thêm điểm sinh viên")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -370,7 +370,7 @@ def add_grade_form(conn):
         semester = st.text_input("Học kỳ")
         academic_year = st.text_input("Năm học")
     
-    if st.button("➕ Thêm điểm", type="primary"):
+    if st.button("Thêm điểm", type="primary"):
         if mssv and student_name:
             scores = [toan, ly, hoa, van, anh, tin_hoc, lap_trinh]
             diem_tb = round(np.mean([s for s in scores if s > 0]), 2)
@@ -381,7 +381,7 @@ def add_grade_form(conn):
             st.error("Vui lòng nhập MSSV và Họ tên!")
 
 def import_data(conn):
-    st.title("📥 Import dữ liệu")
+    st.title("Import dữ liệu")
     
     st.info("""
     **Định dạng file CSV/Excel cần có các cột:**
@@ -402,7 +402,7 @@ def import_data(conn):
             st.write("**Xem trước dữ liệu:**")
             st.dataframe(df.head(10))
             
-            if st.button("📥 Import vào database"):
+            if st.button("Import vào database"):
                 import_grades_from_df(conn, df)
                 st.success(f"Đã import {len(df)} bản ghi!")
                 st.rerun()
@@ -410,7 +410,7 @@ def import_data(conn):
             st.error(f"Lỗi: {e}")
 
 def export_data(df):
-    st.title("📤 Export dữ liệu")
+    st.title("Export dữ liệu")
     
     if df.empty:
         st.warning("Không có dữ liệu để export.")
@@ -419,16 +419,16 @@ def export_data(df):
     col1, col2 = st.columns(2)
     with col1:
         csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Tải CSV", csv, "student_grades.csv", "text/csv")
+        st.download_button("Tải CSV", csv, "student_grades.csv", "text/csv")
     with col2:
         # Export Excel
         from io import BytesIO
         buffer = BytesIO()
         df.to_excel(buffer, index=False)
-        st.download_button("📥 Tải Excel", buffer.getvalue(), "student_grades.xlsx")
+        st.download_button("Tải Excel", buffer.getvalue(), "student_grades.xlsx")
 
 def manage_users(conn):
-    st.title("👥 Quản lý tài khoản")
+    st.title("Quản lý tài khoản")
     
     tab1, tab2 = st.tabs(["Danh sách", "Thêm mới"])
     
@@ -440,7 +440,7 @@ def manage_users(conn):
         if len(users_df) > 1:
             user_to_delete = st.selectbox("Chọn user để xóa", 
                                           users_df[users_df['username'] != 'admin']['id'].tolist())
-            if st.button("🗑️ Xóa user"):
+            if st.button("Xóa user"):
                 delete_user(conn, user_to_delete)
                 st.success("Đã xóa!")
                 st.rerun()
@@ -453,7 +453,7 @@ def manage_users(conn):
         new_role = st.selectbox("Vai trò", ["student", "teacher"])
         new_student_id = st.text_input("MSSV (nếu là học sinh)") if new_role == "student" else None
         
-        if st.button("➕ Tạo tài khoản"):
+        if st.button("Tạo tài khoản"):
             if new_username and new_password and new_fullname:
                 if create_user(conn, new_username, new_password, new_fullname, new_role, new_student_id):
                     st.success("Đã tạo tài khoản!")
@@ -464,14 +464,14 @@ def manage_users(conn):
                 st.error("Vui lòng điền đầy đủ thông tin!")
 
 def show_charts(df):
-    st.title("📈 Biểu đồ phân tích")
+    st.title("Biểu đồ phân tích")
     
     if df.empty:
         st.warning("Chưa có dữ liệu để phân tích.")
         return
     
     # 1. Biểu đồ cột - Điểm TB theo lớp
-    st.subheader("1️⃣ Điểm trung bình theo lớp")
+    st.subheader("Điểm trung bình theo lớp")
     class_avg = df.groupby('class_name')['diem_tb'].mean().reset_index()
     fig1 = px.bar(class_avg, x='class_name', y='diem_tb', 
                   title='Điểm TB theo lớp', color='diem_tb',
@@ -479,13 +479,13 @@ def show_charts(df):
     st.plotly_chart(fig1, use_container_width=True)
     
     # 2. Biểu đồ tròn - Phân bố xếp loại
-    st.subheader("2️⃣ Phân bố xếp loại")
+    st.subheader("Phân bố xếp loại")
     fig2 = px.pie(df, names='xep_loai', title='Tỷ lệ xếp loại học lực',
                   color_discrete_sequence=px.colors.qualitative.Set3)
     st.plotly_chart(fig2, use_container_width=True)
     
     # 3. Biểu đồ đường - Điểm TB các môn
-    st.subheader("3️⃣ Điểm trung bình các môn học")
+    st.subheader("Điểm trung bình các môn học")
     subjects = ['toan', 'ly', 'hoa', 'van', 'anh', 'tin_hoc', 'lap_trinh']
     subject_names = ['Toán', 'Lý', 'Hóa', 'Văn', 'Anh', 'Tin học', 'Lập trình']
     subject_avg = [df[s].mean() for s in subjects]
@@ -494,26 +494,26 @@ def show_charts(df):
     st.plotly_chart(fig3, use_container_width=True)
     
     # 4. Histogram - Phân bố điểm TB
-    st.subheader("4️⃣ Phân bố điểm trung bình")
+    st.subheader("Phân bố điểm trung bình")
     fig4 = px.histogram(df, x='diem_tb', nbins=20, 
                         title='Phân bố điểm TB', labels={'diem_tb': 'Điểm TB'})
     st.plotly_chart(fig4, use_container_width=True)
     
     # 5. Box plot - Điểm theo lớp
-    st.subheader("5️⃣ Phân bố điểm theo lớp")
+    st.subheader("Phân bố điểm theo lớp")
     fig5 = px.box(df, x='class_name', y='diem_tb', color='class_name',
                   title='Box plot điểm TB theo lớp')
     st.plotly_chart(fig5, use_container_width=True)
     
     # 6. Scatter plot
-    st.subheader("6️⃣ Tương quan Toán - Lập trình")
+    st.subheader("Tương quan Toán - Lập trình")
     fig6 = px.scatter(df, x='toan', y='lap_trinh', color='xep_loai',
                       title='Tương quan điểm Toán và Lập trình',
                       labels={'toan': 'Điểm Toán', 'lap_trinh': 'Điểm Lập trình'})
     st.plotly_chart(fig6, use_container_width=True)
     
     # 7. Heatmap - Ma trận tương quan
-    st.subheader("7️⃣ Ma trận tương quan các môn")
+    st.subheader("Ma trận tương quan các môn")
     numeric_cols = df[subjects].dropna()
     if not numeric_cols.empty:
         corr_matrix = numeric_cols.corr()
@@ -523,7 +523,7 @@ def show_charts(df):
 
 # ======================== MAIN ========================
 def main():
-    st.set_page_config(page_title="Quản lý điểm sinh viên", page_icon="🎓", layout="wide")
+    st.set_page_config(page_title="Quản lý điểm sinh viên", page_icon="", layout="wide")
     
     # Khởi tạo database
     conn = init_db()
@@ -542,3 +542,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
