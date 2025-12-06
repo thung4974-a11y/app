@@ -1,4 +1,4 @@
-# app.py - Ứng dụng phân tích kết quả học tập sinh viên
+# app.py - Ứng dụng phân tích kết quả học tập sinh viên (Cập nhật)
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -8,12 +8,30 @@ import sqlite3
 import hashlib
 from datetime import datetime
 
+# ======================== CẤU HÌNH MÔN HỌC ========================
+SUBJECTS = {
+    'triet_hoc': {'name': 'Triết học Mác-Lênin', 'counts_gpa': True, 'semester': 1},
+    'tieng_anh_1': {'name': 'Tiếng Anh cơ sở 1', 'counts_gpa': True, 'semester': 1, 'mandatory': True},
+    'tieng_anh_2': {'name': 'Tiếng Anh cơ sở 2', 'counts_gpa': True, 'semester': 2, 'prerequisite': 'tieng_anh_1'},
+    'tieng_an_do_1': {'name': 'Tiếng Ấn Độ 1', 'counts_gpa': True, 'semester': 1, 'mandatory': True},
+    'tieng_an_do_2': {'name': 'Tiếng Ấn Độ 2', 'counts_gpa': True, 'semester': 2, 'prerequisite': 'tieng_an_do_1'},
+    'gdtc': {'name': 'Giáo dục thể chất', 'counts_gpa': False, 'semester': 1},
+    'tin_hoc_vp': {'name': 'Tin học văn phòng', 'counts_gpa': True, 'semester': 1},
+    'tieng_viet_th': {'name': 'Tiếng Việt thực hành', 'counts_gpa': True, 'semester': 2},
+    'phap_luat': {'name': 'Pháp luật đại cương', 'counts_gpa': True, 'semester': 2},
+    'logic': {'name': 'Logic và suy luận toán học', 'counts_gpa': True, 'semester': 2},
+}
+
+SEMESTER_1_SUBJECTS = ['triet_hoc', 'tieng_anh_1', 'tieng_an_do_1', 'gdtc', 'tin_hoc_vp']
+SEMESTER_2_SUBJECTS = ['tieng_anh_2', 'tieng_an_do_2', 'tieng_viet_th', 'phap_luat', 'logic']
+ACADEMIC_YEAR = 1  # Năm học cố định
+
 # ======================== CẤU HÌNH DATABASE ========================
 def init_db():
     conn = sqlite3.connect('student_grades.db', check_same_thread=False)
     c = conn.cursor()
     
-    # Bảng users (giáo viên/học sinh)
+    # Bảng users
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
@@ -24,27 +42,30 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
-    # Bảng điểm sinh viên
+    # Bảng điểm sinh viên (cập nhật với môn học mới)
     c.execute('''CREATE TABLE IF NOT EXISTS grades (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         mssv TEXT NOT NULL,
         student_name TEXT NOT NULL,
         class_name TEXT,
-        toan REAL,
-        ly REAL,
-        hoa REAL,
-        van REAL,
-        anh REAL,
-        tin_hoc REAL,
-        lap_trinh REAL,
+        semester INTEGER DEFAULT 1,
+        triet_hoc REAL,
+        tieng_anh_1 REAL,
+        tieng_anh_2 REAL,
+        tieng_an_do_1 REAL,
+        tieng_an_do_2 REAL,
+        gdtc REAL,
+        tin_hoc_vp REAL,
+        tieng_viet_th REAL,
+        phap_luat REAL,
+        logic REAL,
         diem_tb REAL,
         xep_loai TEXT,
-        semester TEXT,
-        academic_year TEXT,
+        academic_year INTEGER DEFAULT 1,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
-    # Tạo tài khoản admin mặc định nếu chưa có
+    # Tạo tài khoản admin mặc định
     c.execute("SELECT * FROM users WHERE username = 'admin'")
     if not c.fetchone():
         admin_pass = hashlib.sha256('admin123'.encode()).hexdigest()
@@ -64,11 +85,6 @@ def verify_user(conn, username, password):
     c.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, hashed))
     return c.fetchone()
 
-def get_user_info(conn, username):
-    c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE username = ?", (username,))
-    return c.fetchone()
-
 def calculate_grade(score):
     if score >= 8.5: return 'Giỏi'
     elif score >= 7.0: return 'Khá'
@@ -77,9 +93,30 @@ def calculate_grade(score):
     else: return 'Kém'
 
 def calculate_average(row):
-    subjects = ['toan', 'ly', 'hoa', 'van', 'anh', 'tin_hoc', 'lap_trinh']
-    scores = [row[s] for s in subjects if pd.notna(row.get(s))]
+    """Tính điểm TB (không tính GDTC)"""
+    scores = []
+    for key, info in SUBJECTS.items():
+        if info['counts_gpa'] and pd.notna(row.get(key)) and row.get(key, -1) >= 0:
+            scores.append(row[key])
     return round(np.mean(scores), 2) if scores else 0
+
+def can_take_semester_2(conn, mssv):
+    """Kiểm tra điều kiện học kỳ 2: TB Tiếng Anh 1 + Tiếng Ấn Độ 1 >= 4"""
+    df = load_grades(conn)
+    student_sem1 = df[(df['mssv'] == mssv) & (df['semester'] == 1)]
+    
+    if student_sem1.empty:
+        return False, "Chưa có điểm học kỳ 1"
+    
+    row = student_sem1.iloc[0]
+    tieng_anh_1 = row.get('tieng_anh_1', 0) or 0
+    tieng_an_do_1 = row.get('tieng_an_do_1', 0) or 0
+    avg = (tieng_anh_1 + tieng_an_do_1) / 2
+    
+    if avg >= 4:
+        return True, f"Đủ điều kiện (TB: {avg:.2f})"
+    else:
+        return False, f"Chưa đủ điều kiện (TB: {avg:.2f} < 4)"
 
 # ======================== CHỨC NĂNG DATABASE ========================
 def load_grades(conn):
@@ -87,14 +124,11 @@ def load_grades(conn):
 
 def save_grade(conn, data):
     c = conn.cursor()
-    c.execute('''INSERT INTO grades (mssv, student_name, class_name, toan, ly, hoa, van, anh, tin_hoc, lap_trinh, diem_tb, xep_loai, semester, academic_year)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', data)
-    conn.commit()
-
-def update_grade(conn, grade_id, data):
-    c = conn.cursor()
-    c.execute('''UPDATE grades SET mssv=?, student_name=?, class_name=?, toan=?, ly=?, hoa=?, van=?, anh=?, tin_hoc=?, lap_trinh=?, diem_tb=?, xep_loai=?, semester=?, academic_year=?, updated_at=?
-                 WHERE id=?''', (*data, datetime.now(), grade_id))
+    c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester, 
+                 triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
+                 gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
+                 diem_tb, xep_loai, academic_year)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', data)
     conn.commit()
 
 def delete_grade(conn, grade_id):
@@ -102,18 +136,46 @@ def delete_grade(conn, grade_id):
     c.execute("DELETE FROM grades WHERE id = ?", (grade_id,))
     conn.commit()
 
-def import_grades_from_df(conn, df):
+def clean_data(conn):
+    """Làm sạch dữ liệu: xóa trùng MSSV+semester, sửa điểm âm"""
+    df = load_grades(conn)
     c = conn.cursor()
-    for _, row in df.iterrows():
+    
+    # Đếm trước khi làm sạch
+    original_count = len(df)
+    
+    # Xóa điểm âm
+    negative_fixed = 0
+    for key in SUBJECTS.keys():
+        if key in df.columns:
+            negative_count = (df[key] < 0).sum()
+            negative_fixed += negative_count
+            df.loc[df[key] < 0, key] = None
+    
+    # Xóa trùng lặp (giữ bản ghi đầu tiên)
+    df_clean = df.drop_duplicates(subset=['mssv', 'semester'], keep='first')
+    duplicates_removed = original_count - len(df_clean)
+    
+    # Xóa toàn bộ và insert lại
+    c.execute("DELETE FROM grades")
+    for _, row in df_clean.iterrows():
         diem_tb = calculate_average(row)
         xep_loai = calculate_grade(diem_tb)
-        c.execute('''INSERT INTO grades (mssv, student_name, class_name, toan, ly, hoa, van, anh, tin_hoc, lap_trinh, diem_tb, xep_loai, semester, academic_year)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                  (row.get('mssv', ''), row.get('student_name', ''), row.get('class_name', ''),
-                   row.get('toan'), row.get('ly'), row.get('hoa'), row.get('van'),
-                   row.get('anh'), row.get('tin_hoc'), row.get('lap_trinh'),
-                   diem_tb, xep_loai, row.get('semester', ''), row.get('academic_year', '')))
+        c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
+                     triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
+                     gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
+                     diem_tb, xep_loai, academic_year)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                  (row['mssv'], row['student_name'], row.get('class_name'),
+                   row.get('semester', 1),
+                   row.get('triet_hoc'), row.get('tieng_anh_1'), row.get('tieng_anh_2'),
+                   row.get('tieng_an_do_1'), row.get('tieng_an_do_2'),
+                   row.get('gdtc'), row.get('tin_hoc_vp'), row.get('tieng_viet_th'),
+                   row.get('phap_luat'), row.get('logic'),
+                   diem_tb, xep_loai, ACADEMIC_YEAR))
     conn.commit()
+    
+    return duplicates_removed, negative_fixed
 
 # ======================== QUẢN LÝ USER ========================
 def create_user(conn, username, password, fullname, role, student_id=None):
@@ -163,6 +225,7 @@ def login_page(conn):
 def teacher_dashboard(conn):
     st.sidebar.title(f"{st.session_state['fullname']}")
     st.sidebar.write("Vai trò: **Giáo viên**")
+    st.sidebar.write(f"Năm học: **{ACADEMIC_YEAR}**")
     
     if st.sidebar.button("Đăng xuất"):
         for key in list(st.session_state.keys()):
@@ -175,6 +238,7 @@ def teacher_dashboard(conn):
         "Thêm điểm",
         "Import dữ liệu",
         "Export dữ liệu",
+        "Làm sạch dữ liệu",
         "Quản lý tài khoản",
         "Biểu đồ phân tích"
     ])
@@ -191,75 +255,12 @@ def teacher_dashboard(conn):
         import_data(conn)
     elif menu == "Export dữ liệu":
         export_data(df)
+    elif menu == "Làm sạch dữ liệu":
+        clean_data_page(conn, df)
     elif menu == "Quản lý tài khoản":
         manage_users(conn)
     elif menu == "Biểu đồ phân tích":
         show_charts(df)
-
-def student_dashboard(conn):
-    st.sidebar.title(f"{st.session_state['fullname']}")
-    st.sidebar.write("Vai trò: **Học sinh**")
-    
-    if st.sidebar.button("Đăng xuất"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
-    
-    menu = st.sidebar.radio("Menu", [
-        "Bảng điểm của tôi",
-        "Tra cứu điểm",
-        "Thống kê chung"
-    ])
-    
-    df = load_grades(conn)
-    student_id = st.session_state.get('student_id', '')
-    
-    if menu == "Bảng điểm của tôi":
-        st.title("Bảng điểm của tôi")
-        my_grades = df[df['mssv'] == student_id]
-        if not my_grades.empty:
-            st.dataframe(my_grades, use_container_width=True)
-            
-            # Thống kê cá nhân
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Điểm TB", f"{my_grades['diem_tb'].mean():.2f}")
-            with col2:
-                st.metric("Xếp loại", my_grades['xep_loai'].mode()[0] if not my_grades['xep_loai'].mode().empty else "N/A")
-            with col3:
-                st.metric("Số học phần", len(my_grades))
-        else:
-            st.warning("Chưa có dữ liệu điểm của bạn.")
-    
-    elif menu == "Tra cứu điểm":
-        st.title("Tra cứu điểm sinh viên")
-        search_term = st.text_input("Nhập MSSV hoặc tên sinh viên")
-        if search_term:
-            results = df[df['mssv'].str.contains(search_term, case=False, na=False) | 
-                        df['student_name'].str.contains(search_term, case=False, na=False)]
-            if not results.empty:
-                # Chỉ hiển thị thông tin cơ bản
-                st.dataframe(results[['mssv', 'student_name', 'class_name', 'diem_tb', 'xep_loai']], 
-                           use_container_width=True)
-            else:
-                st.info("Không tìm thấy kết quả.")
-    
-    elif menu == "Thống kê chung":
-        st.title("Thống kê chung")
-        if not df.empty:
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Tổng sinh viên", df['mssv'].nunique())
-            with col2:
-                st.metric("Điểm TB toàn trường", f"{df['diem_tb'].mean():.2f}")
-            with col3:
-                st.metric("Tỷ lệ Giỏi", f"{(df['xep_loai'] == 'Giỏi').sum() / len(df) * 100:.1f}%")
-            with col4:
-                st.metric("Số lớp", df['class_name'].nunique())
-            
-            # Biểu đồ phân bố xếp loại
-            fig = px.pie(df, names='xep_loai', title='Phân bố xếp loại')
-            st.plotly_chart(fig, use_container_width=True)
 
 def show_dashboard(df):
     st.title("Dashboard Tổng quan")
@@ -268,7 +269,6 @@ def show_dashboard(df):
         st.warning("Chưa có dữ liệu. Vui lòng import hoặc thêm dữ liệu.")
         return
     
-    # KPIs
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Tổng sinh viên", df['mssv'].nunique())
@@ -278,6 +278,16 @@ def show_dashboard(df):
         st.metric("Cao nhất", f"{df['diem_tb'].max():.2f}")
     with col4:
         st.metric("Thấp nhất", f"{df['diem_tb'].min():.2f}")
+    
+    # Thống kê theo học kỳ
+    st.subheader("Thống kê theo học kỳ")
+    col1, col2 = st.columns(2)
+    with col1:
+        sem1_count = len(df[df['semester'] == 1])
+        st.metric("Học kỳ 1", f"{sem1_count} bản ghi")
+    with col2:
+        sem2_count = len(df[df['semester'] == 2])
+        st.metric("Học kỳ 2", f"{sem2_count} bản ghi")
     
     # Thống kê theo xếp loại
     st.subheader("Thống kê theo xếp loại")
@@ -292,6 +302,71 @@ def show_dashboard(df):
                     title='Số lượng theo xếp loại', labels={'x': 'Xếp loại', 'y': 'Số lượng'})
         st.plotly_chart(fig, use_container_width=True)
 
+def add_grade_form(conn):
+    st.title("Thêm điểm sinh viên")
+    
+    # Chọn học kỳ trước
+    semester = st.radio("Chọn học kỳ", [1, 2], horizontal=True)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        mssv = st.text_input("MSSV *")
+        student_name = st.text_input("Họ tên *")
+        class_name = st.text_input("Lớp")
+    
+    # Kiểm tra điều kiện học kỳ 2
+    can_sem2 = True
+    if semester == 2 and mssv:
+        can_sem2, message = can_take_semester_2(conn, mssv)
+        if can_sem2:
+            st.success(f"{message}")
+        else:
+            st.error(f"{message}")
+    
+    # Hiển thị các môn theo học kỳ
+    st.subheader(f"Điểm các môn - Học kỳ {semester}")
+    
+    current_subjects = SEMESTER_1_SUBJECTS if semester == 1 else SEMESTER_2_SUBJECTS
+    
+    subject_scores = {}
+    cols = st.columns(3)
+    for i, key in enumerate(current_subjects):
+        info = SUBJECTS[key]
+        with cols[i % 3]:
+            label = info['name']
+            if not info['counts_gpa']:
+                label += " (Không tính GPA)"
+            if info.get('mandatory'):
+                label += " *"
+            subject_scores[key] = st.number_input(label, 0.0, 10.0, 0.0, key=key)
+    
+    # Hiển thị năm học cố định
+    st.info(f"Năm học: **{ACADEMIC_YEAR}** (cố định)")
+    
+    if st.button("Thêm điểm", type="primary", disabled=(semester == 2 and not can_sem2)):
+        if mssv and student_name:
+            # Tính điểm TB
+            scores_for_avg = {k: v for k, v in subject_scores.items() 
+                           if SUBJECTS[k]['counts_gpa'] and v > 0}
+            diem_tb = round(np.mean(list(scores_for_avg.values())), 2) if scores_for_avg else 0
+            xep_loai = calculate_grade(diem_tb)
+            
+            # Chuẩn bị data (điền None cho môn không thuộc học kỳ này)
+            all_scores = {k: None for k in SUBJECTS.keys()}
+            all_scores.update(subject_scores)
+            
+            save_grade(conn, (
+                mssv, student_name, class_name, semester,
+                all_scores['triet_hoc'], all_scores['tieng_anh_1'], all_scores['tieng_anh_2'],
+                all_scores['tieng_an_do_1'], all_scores['tieng_an_do_2'],
+                all_scores['gdtc'], all_scores['tin_hoc_vp'], all_scores['tieng_viet_th'],
+                all_scores['phap_luat'], all_scores['logic'],
+                diem_tb, xep_loai, ACADEMIC_YEAR
+            ))
+            st.success(f"Đã thêm điểm cho {student_name} - ĐTB: {diem_tb} - Xếp loại: {xep_loai}")
+        else:
+            st.error("Vui lòng nhập MSSV và Họ tên!")
+
 def manage_grades(conn, df):
     st.title("Quản lý điểm sinh viên")
     
@@ -300,7 +375,7 @@ def manage_grades(conn, df):
     with col1:
         search = st.text_input("Tìm kiếm (MSSV/Tên)")
     with col2:
-        class_filter = st.selectbox("Lớp", ['Tất cả'] + list(df['class_name'].dropna().unique()))
+        semester_filter = st.selectbox("Học kỳ", ['Tất cả', 1, 2])
     with col3:
         xep_loai_filter = st.selectbox("Xếp loại", ['Tất cả'] + list(df['xep_loai'].dropna().unique()))
     
@@ -308,102 +383,119 @@ def manage_grades(conn, df):
     if search:
         filtered_df = filtered_df[filtered_df['mssv'].str.contains(search, case=False, na=False) |
                                   filtered_df['student_name'].str.contains(search, case=False, na=False)]
-    if class_filter != 'Tất cả':
-        filtered_df = filtered_df[filtered_df['class_name'] == class_filter]
+    if semester_filter != 'Tất cả':
+        filtered_df = filtered_df[filtered_df['semester'] == semester_filter]
     if xep_loai_filter != 'Tất cả':
         filtered_df = filtered_df[filtered_df['xep_loai'] == xep_loai_filter]
     
-    st.dataframe(filtered_df, use_container_width=True)
+    # Hiển thị cột cơ bản
+    display_cols = ['id', 'mssv', 'student_name', 'class_name', 'semester', 'diem_tb', 'xep_loai']
+    st.dataframe(filtered_df[display_cols], use_container_width=True)
     
-    # Sửa/Xóa
-    st.subheader("Sửa/Xóa điểm")
+    # Xem chi tiết điểm
     if not filtered_df.empty:
-        selected_id = st.selectbox("Chọn ID để sửa/xóa", filtered_df['id'].tolist())
+        st.subheader("Chi tiết điểm")
+        selected_id = st.selectbox("Chọn ID để xem chi tiết", filtered_df['id'].tolist())
         selected_row = df[df['id'] == selected_id].iloc[0]
         
-        with st.expander("Sửa thông tin"):
-            col1, col2 = st.columns(2)
-            with col1:
-                new_mssv = st.text_input("MSSV", selected_row['mssv'])
-                new_name = st.text_input("Họ tên", selected_row['student_name'])
-                new_class = st.text_input("Lớp", selected_row['class_name'] or '')
-                new_toan = st.number_input("Toán", 0.0, 10.0, float(selected_row['toan'] or 0))
-                new_ly = st.number_input("Lý", 0.0, 10.0, float(selected_row['ly'] or 0))
-                new_hoa = st.number_input("Hóa", 0.0, 10.0, float(selected_row['hoa'] or 0))
-            with col2:
-                new_van = st.number_input("Văn", 0.0, 10.0, float(selected_row['van'] or 0))
-                new_anh = st.number_input("Anh", 0.0, 10.0, float(selected_row['anh'] or 0))
-                new_tin = st.number_input("Tin học", 0.0, 10.0, float(selected_row['tin_hoc'] or 0))
-                new_lap_trinh = st.number_input("Lập trình", 0.0, 10.0, float(selected_row['lap_trinh'] or 0))
-                new_semester = st.text_input("Học kỳ", selected_row['semester'] or '')
-                new_year = st.text_input("Năm học", selected_row['academic_year'] or '')
-            
-            if st.button("Lưu thay đổi"):
-                scores = [new_toan, new_ly, new_hoa, new_van, new_anh, new_tin, new_lap_trinh]
-                diem_tb = round(np.mean([s for s in scores if s > 0]), 2)
-                xep_loai = calculate_grade(diem_tb)
-                update_grade(conn, selected_id, (new_mssv, new_name, new_class, new_toan, new_ly, new_hoa, new_van, new_anh, new_tin, new_lap_trinh, diem_tb, xep_loai, new_semester, new_year))
-                st.success("Đã cập nhật!")
-                st.rerun()
+        semester = selected_row.get('semester', 1)
+        current_subjects = SEMESTER_1_SUBJECTS if semester == 1 else SEMESTER_2_SUBJECTS
+        
+        cols = st.columns(5)
+        for i, key in enumerate(current_subjects):
+            with cols[i % 5]:
+                score = selected_row.get(key)
+                st.metric(SUBJECTS[key]['name'][:15], score if pd.notna(score) else "-")
         
         if st.button("Xóa bản ghi này", type="secondary"):
             delete_grade(conn, selected_id)
             st.success("Đã xóa!")
             st.rerun()
 
-def add_grade_form(conn):
-    st.title("Thêm điểm sinh viên")
+def clean_data_page(conn, df):
+    st.title("Làm sạch dữ liệu")
+    
+    # Phân tích dữ liệu hiện tại
+    st.subheader("Phân tích dữ liệu hiện tại")
+    
+    # Đếm trùng lặp
+    duplicate_count = df.duplicated(subset=['mssv', 'semester'], keep='first').sum()
+    
+    # Đếm điểm âm
+    negative_count = 0
+    for key in SUBJECTS.keys():
+        if key in df.columns:
+            negative_count += (df[key] < 0).sum()
     
     col1, col2 = st.columns(2)
     with col1:
-        mssv = st.text_input("MSSV *")
-        student_name = st.text_input("Họ tên *")
-        class_name = st.text_input("Lớp")
-        toan = st.number_input("Toán", 0.0, 10.0, 0.0)
-        ly = st.number_input("Lý", 0.0, 10.0, 0.0)
-        hoa = st.number_input("Hóa", 0.0, 10.0, 0.0)
-    with col2:
-        van = st.number_input("Văn", 0.0, 10.0, 0.0)
-        anh = st.number_input("Anh", 0.0, 10.0, 0.0)
-        tin_hoc = st.number_input("Tin học", 0.0, 10.0, 0.0)
-        lap_trinh = st.number_input("Lập trình", 0.0, 10.0, 0.0)
-        semester = st.text_input("Học kỳ")
-        academic_year = st.text_input("Năm học")
-    
-    if st.button("Thêm điểm", type="primary"):
-        if mssv and student_name:
-            scores = [toan, ly, hoa, van, anh, tin_hoc, lap_trinh]
-            diem_tb = round(np.mean([s for s in scores if s > 0]), 2)
-            xep_loai = calculate_grade(diem_tb)
-            save_grade(conn, (mssv, student_name, class_name, toan, ly, hoa, van, anh, tin_hoc, lap_trinh, diem_tb, xep_loai, semester, academic_year))
-            st.success(f"Đã thêm điểm cho {student_name} - ĐTB: {diem_tb} - Xếp loại: {xep_loai}")
+        if duplicate_count > 0:
+            st.error(f"Có **{duplicate_count}** bản ghi trùng MSSV + Học kỳ")
         else:
-            st.error("Vui lòng nhập MSSV và Họ tên!")
+            st.success("Không có bản ghi trùng lặp")
+    
+    with col2:
+        if negative_count > 0:
+            st.error(f"Có **{negative_count}** điểm âm (không hợp lệ)")
+        else:
+            st.success("Không có điểm âm")
+    
+    st.divider()
+    
+    st.subheader("🔧 Thực hiện làm sạch")
+    st.write("Quá trình này sẽ:")
+    st.write("- Xóa các bản ghi trùng MSSV + Học kỳ (giữ bản ghi đầu tiên)")
+    st.write("- Xóa các điểm có giá trị âm")
+    st.write("- Tính lại điểm TB và xếp loại")
+    
+    if st.button("Làm sạch dữ liệu", type="primary", 
+                disabled=(duplicate_count == 0 and negative_count == 0)):
+        duplicates_removed, negatives_fixed = clean_data(conn)
+        st.success(f"Hoàn thành! Đã xóa {duplicates_removed} bản ghi trùng và sửa {negatives_fixed} điểm âm.")
+        st.rerun()
 
 def import_data(conn):
     st.title("Import dữ liệu")
     
-    st.info("""
-    **Định dạng file CSV/Excel cần có các cột:**
-    - mssv, student_name, class_name
-    - toan, ly, hoa, van, anh, tin_hoc, lap_trinh
-    - semester, academic_year (tùy chọn)
+    st.info(f"""
+    **Định dạng file CSV cần có các cột:**
+    - mssv, student_name, class_name, semester
+    - {', '.join(SUBJECTS.keys())}
+    
+    **Lưu ý:** 
+    - Học kỳ (semester) = 1 hoặc 2
+    - Năm học cố định = {ACADEMIC_YEAR}
+    - Giáo dục thể chất không tính vào GPA
     """)
     
-    uploaded_file = st.file_uploader("Chọn file CSV hoặc Excel", type=['csv', 'xlsx', 'xls'])
+    uploaded_file = st.file_uploader("Chọn file CSV", type=['csv'])
     
     if uploaded_file:
         try:
-            if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
-            else:
-                df = pd.read_excel(uploaded_file)
-            
+            df = pd.read_csv(uploaded_file)
             st.write("**Xem trước dữ liệu:**")
             st.dataframe(df.head(10))
             
             if st.button("Import vào database"):
-                import_grades_from_df(conn, df)
+                c = conn.cursor()
+                for _, row in df.iterrows():
+                    diem_tb = calculate_average(row)
+                    xep_loai = calculate_grade(diem_tb)
+                    semester = row.get('semester', 1)
+                    
+                    c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
+                                 triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
+                                 gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
+                                 diem_tb, xep_loai, academic_year)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                              (row.get('mssv', ''), row.get('student_name', ''), row.get('class_name', ''),
+                               semester,
+                               row.get('triet_hoc'), row.get('tieng_anh_1'), row.get('tieng_anh_2'),
+                               row.get('tieng_an_do_1'), row.get('tieng_an_do_2'),
+                               row.get('gdtc'), row.get('tin_hoc_vp'), row.get('tieng_viet_th'),
+                               row.get('phap_luat'), row.get('logic'),
+                               diem_tb, xep_loai, ACADEMIC_YEAR))
+                conn.commit()
                 st.success(f"Đã import {len(df)} bản ghi!")
                 st.rerun()
         except Exception as e:
@@ -416,16 +508,8 @@ def export_data(df):
         st.warning("Không có dữ liệu để export.")
         return
     
-    col1, col2 = st.columns(2)
-    with col1:
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("Tải CSV", csv, "student_grades.csv", "text/csv")
-    with col2:
-        # Export Excel
-        from io import BytesIO
-        buffer = BytesIO()
-        df.to_excel(buffer, index=False)
-        st.download_button("Tải Excel", buffer.getvalue(), "student_grades.xlsx")
+    csv = df.to_csv(index=False).encode('utf-8-sig')
+    st.download_button("Tải file CSV", csv, "student_grades.csv", "text/csv")
 
 def manage_users(conn):
     st.title("Quản lý tài khoản")
@@ -436,7 +520,6 @@ def manage_users(conn):
         users_df = get_all_users(conn)
         st.dataframe(users_df, use_container_width=True)
         
-        # Xóa user
         if len(users_df) > 1:
             user_to_delete = st.selectbox("Chọn user để xóa", 
                                           users_df[users_df['username'] != 'admin']['id'].tolist())
@@ -470,7 +553,7 @@ def show_charts(df):
         st.warning("Chưa có dữ liệu để phân tích.")
         return
     
-    # 1. Biểu đồ cột - Điểm TB theo lớp
+    # 1. Điểm TB theo lớp
     st.subheader("Điểm trung bình theo lớp")
     class_avg = df.groupby('class_name')['diem_tb'].mean().reset_index()
     fig1 = px.bar(class_avg, x='class_name', y='diem_tb', 
@@ -478,57 +561,113 @@ def show_charts(df):
                   labels={'class_name': 'Lớp', 'diem_tb': 'Điểm TB'})
     st.plotly_chart(fig1, use_container_width=True)
     
-    # 2. Biểu đồ tròn - Phân bố xếp loại
+    # 2. Phân bố xếp loại
     st.subheader("Phân bố xếp loại")
     fig2 = px.pie(df, names='xep_loai', title='Tỷ lệ xếp loại học lực',
                   color_discrete_sequence=px.colors.qualitative.Set3)
     st.plotly_chart(fig2, use_container_width=True)
     
-    # 3. Biểu đồ đường - Điểm TB các môn
+    # 3. Điểm TB các môn (chỉ môn tính GPA)
     st.subheader("Điểm trung bình các môn học")
-    subjects = ['toan', 'ly', 'hoa', 'van', 'anh', 'tin_hoc', 'lap_trinh']
-    subject_names = ['Toán', 'Lý', 'Hóa', 'Văn', 'Anh', 'Tin học', 'Lập trình']
-    subject_avg = [df[s].mean() for s in subjects]
-    fig3 = px.line(x=subject_names, y=subject_avg, markers=True,
-                   title='Điểm TB các môn', labels={'x': 'Môn học', 'y': 'Điểm TB'})
-    st.plotly_chart(fig3, use_container_width=True)
+    subject_avg = []
+    for key, info in SUBJECTS.items():
+        if info['counts_gpa'] and key in df.columns:
+            avg = df[key].mean()
+            if pd.notna(avg):
+                subject_avg.append({'Môn': info['name'], 'Điểm TB': avg})
     
-    # 4. Histogram - Phân bố điểm TB
-    st.subheader("Phân bố điểm trung bình")
-    fig4 = px.histogram(df, x='diem_tb', nbins=20, 
-                        title='Phân bố điểm TB', labels={'diem_tb': 'Điểm TB'})
+    if subject_avg:
+        subject_df = pd.DataFrame(subject_avg)
+        fig3 = px.line(subject_df, x='Môn', y='Điểm TB', markers=True, title='Điểm TB các môn')
+        st.plotly_chart(fig3, use_container_width=True)
+    
+    # 4. So sánh học kỳ
+    st.subheader("So sánh theo học kỳ")
+    semester_avg = df.groupby('semester')['diem_tb'].mean().reset_index()
+    semester_avg['semester'] = semester_avg['semester'].map({1: 'Học kỳ 1', 2: 'Học kỳ 2'})
+    fig4 = px.bar(semester_avg, x='semester', y='diem_tb', 
+                  title='Điểm TB theo học kỳ', color='diem_tb')
     st.plotly_chart(fig4, use_container_width=True)
     
-    # 5. Box plot - Điểm theo lớp
-    st.subheader("Phân bố điểm theo lớp")
-    fig5 = px.box(df, x='class_name', y='diem_tb', color='class_name',
-                  title='Box plot điểm TB theo lớp')
+    # 5. Phân bố điểm TB
+    st.subheader("Phân bố điểm trung bình")
+    fig5 = px.histogram(df, x='diem_tb', nbins=20, title='Phân bố điểm TB')
     st.plotly_chart(fig5, use_container_width=True)
+
+def student_dashboard(conn):
+    st.sidebar.title(f"{st.session_state['fullname']}")
+    st.sidebar.write("Vai trò: **Học sinh**")
     
-    # 6. Scatter plot
-    st.subheader("Tương quan Toán - Lập trình")
-    fig6 = px.scatter(df, x='toan', y='lap_trinh', color='xep_loai',
-                      title='Tương quan điểm Toán và Lập trình',
-                      labels={'toan': 'Điểm Toán', 'lap_trinh': 'Điểm Lập trình'})
-    st.plotly_chart(fig6, use_container_width=True)
+    if st.sidebar.button("Đăng xuất"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
     
-    # 7. Heatmap - Ma trận tương quan
-    st.subheader("Ma trận tương quan các môn")
-    numeric_cols = df[subjects].dropna()
-    if not numeric_cols.empty:
-        corr_matrix = numeric_cols.corr()
-        fig7 = px.imshow(corr_matrix, text_auto=True, aspect="auto",
-                         title='Ma trận tương quan', x=subject_names, y=subject_names)
-        st.plotly_chart(fig7, use_container_width=True)
+    menu = st.sidebar.radio("Menu", [
+        "Bảng điểm của tôi",
+        "Tra cứu điểm",
+        "Thống kê chung"
+    ])
+    
+    df = load_grades(conn)
+    student_id = st.session_state.get('student_id', '')
+    
+    if menu == "Bảng điểm của tôi":
+        st.title("Bảng điểm của tôi")
+        my_grades = df[df['mssv'] == student_id]
+        if not my_grades.empty:
+            for _, row in my_grades.iterrows():
+                semester = row.get('semester', 1)
+                st.subheader(f"Học kỳ {semester}")
+                
+                current_subjects = SEMESTER_1_SUBJECTS if semester == 1 else SEMESTER_2_SUBJECTS
+                cols = st.columns(5)
+                for i, key in enumerate(current_subjects):
+                    with cols[i % 5]:
+                        score = row.get(key)
+                        st.metric(SUBJECTS[key]['name'][:12], score if pd.notna(score) else "-")
+                
+                st.metric("Điểm TB", f"{row['diem_tb']:.2f}")
+                st.metric("Xếp loại", row['xep_loai'])
+                st.divider()
+        else:
+            st.warning("Chưa có dữ liệu điểm của bạn.")
+    
+    elif menu == "Tra cứu điểm":
+        st.title("Tra cứu điểm sinh viên")
+        search_term = st.text_input("Nhập MSSV hoặc tên sinh viên")
+        if search_term:
+            results = df[df['mssv'].str.contains(search_term, case=False, na=False) | 
+                        df['student_name'].str.contains(search_term, case=False, na=False)]
+            if not results.empty:
+                st.dataframe(results[['mssv', 'student_name', 'class_name', 'semester', 'diem_tb', 'xep_loai']], 
+                           use_container_width=True)
+            else:
+                st.info("Không tìm thấy kết quả.")
+    
+    elif menu == "Thống kê chung":
+        st.title("Thống kê chung")
+        if not df.empty:
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Tổng SV", df['mssv'].nunique())
+            with col2:
+                st.metric("Điểm TB", f"{df['diem_tb'].mean():.2f}")
+            with col3:
+                excellent_rate = (df['xep_loai'] == 'Giỏi').sum() / len(df) * 100
+                st.metric("Tỷ lệ Giỏi", f"{excellent_rate:.1f}%")
+            with col4:
+                st.metric("Số lớp", df['class_name'].nunique())
+            
+            fig = px.pie(df, names='xep_loai', title='Phân bố xếp loại')
+            st.plotly_chart(fig, use_container_width=True)
 
 # ======================== MAIN ========================
 def main():
     st.set_page_config(page_title="Quản lý điểm sinh viên", page_icon="", layout="wide")
     
-    # Khởi tạo database
     conn = init_db()
     
-    # Kiểm tra đăng nhập
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
     
@@ -542,4 +681,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
