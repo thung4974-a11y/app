@@ -1,4 +1,4 @@
-# app.py - Ứng dụng phân tích kết quả học tập sinh viên (Cập nhật)
+# app.py - Ứng dụng phân tích kết quả học tập sinh viên (Cập nhật - sửa lỗi robust)
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 import sqlite3
 import hashlib
 from datetime import datetime
+import traceback
 
 # ======================== CẤU HÌNH MÔN HỌC ========================
 SUBJECTS = {
@@ -27,8 +28,8 @@ SEMESTER_2_SUBJECTS = ['tieng_anh_2', 'tieng_an_do_2', 'tieng_viet_th', 'phap_lu
 ACADEMIC_YEAR = 1  # Năm học cố định
 
 # ======================== CẤU HÌNH DATABASE ========================
-def init_db():
-    conn = sqlite3.connect('student_grades.db', check_same_thread=False)
+def init_db(db_path='student_grades.db'):
+    conn = sqlite3.connect(db_path, check_same_thread=False)
     c = conn.cursor()
     
     # Bảng users
@@ -86,19 +87,31 @@ def verify_user(conn, username, password):
     return c.fetchone()
 
 def calculate_grade(score):
-    if score >= 8.5: return 'Giỏi'
-    elif score >= 7.0: return 'Khá'
-    elif score >= 5.5: return 'Trung bình'
-    elif score >= 4.0: return 'Yếu'
+    try:
+        s = float(score)
+    except Exception:
+        s = 0.0
+    if s >= 8.5: return 'Giỏi'
+    elif s >= 7.0: return 'Khá'
+    elif s >= 5.5: return 'Trung bình'
+    elif s >= 4.0: return 'Yếu'
     else: return 'Kém'
 
 def calculate_average(row):
-    """Tính điểm TB (không tính GDTC)"""
+    """Tính điểm TB (không tính GDTC). Xử lý an toàn với giá trị non-numeric/NaN."""
     scores = []
     for key, info in SUBJECTS.items():
-        if info['counts_gpa'] and pd.notna(row.get(key)) and row.get(key, -1) >= 0:
-            scores.append(row[key])
-    return round(np.mean(scores), 2) if scores else 0
+        if info['counts_gpa']:
+            val = row.get(key)
+            # Chuyển sang số, lỗi -> NaN
+            try:
+                num = float(val) if pd.notna(val) else np.nan
+            except Exception:
+                num = np.nan
+            # chỉ tính khi hợp lệ và >= 0
+            if pd.notna(num) and num >= 0:
+                scores.append(num)
+    return round(float(np.mean(scores)), 2) if scores else 0.0
 
 def can_take_semester_2(conn, mssv):
     """Kiểm tra điều kiện học kỳ 2: TB Tiếng Anh 1 + Tiếng Ấn Độ 1 >= 4"""
@@ -109,9 +122,16 @@ def can_take_semester_2(conn, mssv):
         return False, "Chưa có điểm học kỳ 1"
     
     row = student_sem1.iloc[0]
-    tieng_anh_1 = row.get('tieng_anh_1', 0) or 0
-    tieng_an_do_1 = row.get('tieng_an_do_1', 0) or 0
-    avg = (tieng_anh_1 + tieng_an_do_1) / 2
+    # đảm bảo numeric
+    try:
+        tieng_anh_1 = float(row.get('tieng_anh_1') or 0)
+    except Exception:
+        tieng_anh_1 = 0
+    try:
+        tieng_an_do_1 = float(row.get('tieng_an_do_1') or 0)
+    except Exception:
+        tieng_an_do_1 = 0
+    avg = (tieng_anh_1 + tieng_an_do_1) / 2.0
     
     if avg >= 4:
         return True, f"Đủ điều kiện (TB: {avg:.2f})"
@@ -120,16 +140,34 @@ def can_take_semester_2(conn, mssv):
 
 # ======================== CHỨC NĂNG DATABASE ========================
 def load_grades(conn):
-    return pd.read_sql_query("SELECT * FROM grades", conn)
+    try:
+        df = pd.read_sql_query("SELECT * FROM grades", conn)
+        # đảm bảo các cột môn học tồn tại và là numeric
+        for key in SUBJECTS.keys():
+            if key in df.columns:
+                df[key] = pd.to_numeric(df[key], errors='coerce')
+        # đảm bảo diem_tb numeric
+        if 'diem_tb' in df.columns:
+            df['diem_tb'] = pd.to_numeric(df['diem_tb'], errors='coerce').fillna(0.0)
+        return df
+    except Exception:
+        # nếu bảng chưa tồn tại hoặc lỗi, trả DataFrame rỗng với cột chuẩn
+        cols = ['id','mssv','student_name','class_name','semester'] + list(SUBJECTS.keys()) + ['diem_tb','xep_loai','academic_year','updated_at']
+        return pd.DataFrame(columns=cols)
 
 def save_grade(conn, data):
     c = conn.cursor()
-    c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester, 
-                 triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
-                 gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
-                 diem_tb, xep_loai, academic_year)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', data)
-    conn.commit()
+    try:
+        c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester, 
+                     triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
+                     gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
+                     diem_tb, xep_loai, academic_year)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', data)
+        conn.commit()
+        return True, None
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
 
 def delete_grade(conn, grade_id):
     c = conn.cursor()
@@ -144,36 +182,67 @@ def clean_data(conn):
     # Đếm trước khi làm sạch
     original_count = len(df)
     
-    # Xóa điểm âm
+    # Nếu df rỗng, trả về 0,0
+    if original_count == 0:
+        return 0, 0
+    
+    # Ép numeric cho các môn, thay lỗi -> NaN
+    for key in SUBJECTS.keys():
+        if key in df.columns:
+            df[key] = pd.to_numeric(df[key], errors='coerce')
+    
+    # Xóa điểm âm => đặt thành NaN (None khi insert)
     negative_fixed = 0
     for key in SUBJECTS.keys():
         if key in df.columns:
-            negative_count = (df[key] < 0).sum()
+            # đếm số < 0 (NaN sẽ bỏ qua)
+            negative_count = int((df[key] < 0).sum())
             negative_fixed += negative_count
-            df.loc[df[key] < 0, key] = None
+            df.loc[df[key] < 0, key] = np.nan
     
     # Xóa trùng lặp (giữ bản ghi đầu tiên)
     df_clean = df.drop_duplicates(subset=['mssv', 'semester'], keep='first')
     duplicates_removed = original_count - len(df_clean)
     
     # Xóa toàn bộ và insert lại
-    c.execute("DELETE FROM grades")
-    for _, row in df_clean.iterrows():
-        diem_tb = calculate_average(row)
-        xep_loai = calculate_grade(diem_tb)
-        c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
-                     triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
-                     gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
-                     diem_tb, xep_loai, academic_year)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                  (row['mssv'], row['student_name'], row.get('class_name'),
-                   row.get('semester', 1),
-                   row.get('triet_hoc'), row.get('tieng_anh_1'), row.get('tieng_anh_2'),
-                   row.get('tieng_an_do_1'), row.get('tieng_an_do_2'),
-                   row.get('gdtc'), row.get('tin_hoc_vp'), row.get('tieng_viet_th'),
-                   row.get('phap_luat'), row.get('logic'),
-                   diem_tb, xep_loai, ACADEMIC_YEAR))
-    conn.commit()
+    try:
+        c.execute("DELETE FROM grades")
+        inserted = 0
+        for _, row in df_clean.iterrows():
+            diem_tb = calculate_average(row)
+            xep_loai = calculate_grade(diem_tb)
+            # Lấy values, convert NaN -> None
+            def safe_val(k):
+                v = row.get(k)
+                if pd.isna(v):
+                    return None
+                return float(v) if v != '' else None
+            params = (
+                row.get('mssv', ''), row.get('student_name', ''), row.get('class_name', None),
+                int(row.get('semester', 1)) if not pd.isna(row.get('semester', 1)) else 1,
+                safe_val('triet_hoc'), safe_val('tieng_anh_1'), safe_val('tieng_anh_2'),
+                safe_val('tieng_an_do_1'), safe_val('tieng_an_do_2'),
+                safe_val('gdtc'), safe_val('tin_hoc_vp'), safe_val('tieng_viet_th'),
+                safe_val('phap_luat'), safe_val('logic'),
+                float(diem_tb), xep_loai, int(ACADEMIC_YEAR)
+            )
+            try:
+                c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
+                             triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
+                             gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
+                             diem_tb, xep_loai, academic_year)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', params)
+                inserted += 1
+            except Exception as e:
+                # ghi log lỗi chứ không dừng toàn bộ quá trình
+                print("Error inserting row during clean_data:", e)
+                print(traceback.format_exc())
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print("Error in clean_data main:", e)
+        print(traceback.format_exc())
+        raise
     
     return duplicates_removed, negative_fixed
 
@@ -223,7 +292,7 @@ def login_page(conn):
         st.info("**Tài khoản mặc định:**\n- Username: admin\n- Password: admin123")
 
 def teacher_dashboard(conn):
-    st.sidebar.title(f"{st.session_state['fullname']}")
+    st.sidebar.title(f"{st.session_state.get('fullname','')}")
     st.sidebar.write("Vai trò: **Giáo viên**")
     st.sidebar.write(f"Năm học: **{ACADEMIC_YEAR}**")
     
@@ -291,7 +360,7 @@ def show_dashboard(df):
     
     # Thống kê theo xếp loại
     st.subheader("Thống kê theo xếp loại")
-    xep_loai_counts = df['xep_loai'].value_counts()
+    xep_loai_counts = df['xep_loai'].fillna('Chưa xếp loại').value_counts()
     col1, col2 = st.columns(2)
     with col1:
         fig = px.pie(values=xep_loai_counts.values, names=xep_loai_counts.index, 
@@ -338,7 +407,7 @@ def add_grade_form(conn):
                 label += " (Không tính GPA)"
             if info.get('mandatory'):
                 label += " *"
-            subject_scores[key] = st.number_input(label, 0.0, 10.0, 0.0, key=key)
+            subject_scores[key] = st.number_input(label, 0.0, 10.0, 0.0, key=f"add_{key}")
     
     # Hiển thị năm học cố định
     st.info(f"Năm học: **{ACADEMIC_YEAR}** (cố định)")
@@ -348,22 +417,32 @@ def add_grade_form(conn):
             # Tính điểm TB
             scores_for_avg = {k: v for k, v in subject_scores.items() 
                            if SUBJECTS[k]['counts_gpa'] and v > 0}
-            diem_tb = round(np.mean(list(scores_for_avg.values())), 2) if scores_for_avg else 0
+            diem_tb = round(np.mean(list(scores_for_avg.values())), 2) if scores_for_avg else 0.0
             xep_loai = calculate_grade(diem_tb)
             
             # Chuẩn bị data (điền None cho môn không thuộc học kỳ này)
             all_scores = {k: None for k in SUBJECTS.keys()}
             all_scores.update(subject_scores)
             
-            save_grade(conn, (
-                mssv, student_name, class_name, semester,
-                all_scores['triet_hoc'], all_scores['tieng_anh_1'], all_scores['tieng_anh_2'],
-                all_scores['tieng_an_do_1'], all_scores['tieng_an_do_2'],
-                all_scores['gdtc'], all_scores['tin_hoc_vp'], all_scores['tieng_viet_th'],
-                all_scores['phap_luat'], all_scores['logic'],
-                diem_tb, xep_loai, ACADEMIC_YEAR
-            ))
-            st.success(f"Đã thêm điểm cho {student_name} - ĐTB: {diem_tb} - Xếp loại: {xep_loai}")
+            params = (
+                mssv, student_name, class_name, int(semester),
+                float(all_scores['triet_hoc']) if all_scores['triet_hoc'] is not None else None,
+                float(all_scores['tieng_anh_1']) if all_scores['tieng_anh_1'] is not None else None,
+                float(all_scores['tieng_anh_2']) if all_scores['tieng_anh_2'] is not None else None,
+                float(all_scores['tieng_an_do_1']) if all_scores['tieng_an_do_1'] is not None else None,
+                float(all_scores['tieng_an_do_2']) if all_scores['tieng_an_do_2'] is not None else None,
+                float(all_scores['gdtc']) if all_scores['gdtc'] is not None else None,
+                float(all_scores['tin_hoc_vp']) if all_scores['tin_hoc_vp'] is not None else None,
+                float(all_scores['tieng_viet_th']) if all_scores['tieng_viet_th'] is not None else None,
+                float(all_scores['phap_luat']) if all_scores['phap_luat'] is not None else None,
+                float(all_scores['logic']) if all_scores['logic'] is not None else None,
+                float(diem_tb), xep_loai, int(ACADEMIC_YEAR)
+            )
+            ok, err = save_grade(conn, params)
+            if ok:
+                st.success(f"Đã thêm điểm cho {student_name} - ĐTB: {diem_tb} - Xếp loại: {xep_loai}")
+            else:
+                st.error(f"Lỗi khi lưu vào DB: {err}")
         else:
             st.error("Vui lòng nhập MSSV và Họ tên!")
 
@@ -377,7 +456,7 @@ def manage_grades(conn, df):
     with col2:
         semester_filter = st.selectbox("Học kỳ", ['Tất cả', 1, 2])
     with col3:
-        xep_loai_filter = st.selectbox("Xếp loại", ['Tất cả'] + list(df['xep_loai'].dropna().unique()))
+        xep_loai_filter = st.selectbox("Xếp loại", ['Tất cả'] + list(df['xep_loai'].dropna().unique()) if not df.empty else ['Tất cả'])
     
     filtered_df = df.copy()
     if search:
@@ -398,7 +477,7 @@ def manage_grades(conn, df):
         selected_id = st.selectbox("Chọn ID để xem chi tiết", filtered_df['id'].tolist())
         selected_row = df[df['id'] == selected_id].iloc[0]
         
-        semester = selected_row.get('semester', 1)
+        semester = int(selected_row.get('semester', 1))
         current_subjects = SEMESTER_1_SUBJECTS if semester == 1 else SEMESTER_2_SUBJECTS
         
         cols = st.columns(5)
@@ -419,13 +498,14 @@ def clean_data_page(conn, df):
     st.subheader("Phân tích dữ liệu hiện tại")
     
     # Đếm trùng lặp
-    duplicate_count = df.duplicated(subset=['mssv', 'semester'], keep='first').sum()
+    duplicate_count = int(df.duplicated(subset=['mssv', 'semester'], keep='first').sum()) if not df.empty else 0
     
     # Đếm điểm âm
     negative_count = 0
     for key in SUBJECTS.keys():
         if key in df.columns:
-            negative_count += (df[key] < 0).sum()
+            # ép numeric tạm để kiểm tra
+            negative_count += int((pd.to_numeric(df[key], errors='coerce') < 0).sum())
     
     col1, col2 = st.columns(2)
     with col1:
@@ -450,9 +530,13 @@ def clean_data_page(conn, df):
     
     if st.button("Làm sạch dữ liệu", type="primary", 
                 disabled=(duplicate_count == 0 and negative_count == 0)):
-        duplicates_removed, negatives_fixed = clean_data(conn)
-        st.success(f"Hoàn thành! Đã xóa {duplicates_removed} bản ghi trùng và sửa {negatives_fixed} điểm âm.")
-        st.rerun()
+        try:
+            duplicates_removed, negatives_fixed = clean_data(conn)
+            st.success(f"Hoàn thành! Đã xóa {duplicates_removed} bản ghi trùng và sửa {negatives_fixed} điểm âm.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Lỗi khi làm sạch: {e}")
+            print(traceback.format_exc())
 
 def import_data(conn):
     st.title("Import dữ liệu")
@@ -478,28 +562,53 @@ def import_data(conn):
             
             if st.button("Import vào database"):
                 c = conn.cursor()
+                
+                # ép numeric cho các môn
+                for key in SUBJECTS.keys():
+                    if key in df.columns:
+                        df[key] = pd.to_numeric(df[key], errors='coerce')
+                    else:
+                        # nếu file thiếu cột nào đó, tạo cột với NaN để tránh KeyError
+                        df[key] = np.nan
+                
+                count_inserted = 0
                 for _, row in df.iterrows():
                     diem_tb = calculate_average(row)
                     xep_loai = calculate_grade(diem_tb)
-                    semester = row.get('semester', 1)
+                    semester = int(row.get('semester', 1)) if not pd.isna(row.get('semester', 1)) else 1
                     
-                    c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
-                                 triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
-                                 gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
-                                 diem_tb, xep_loai, academic_year)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                              (row.get('mssv', ''), row.get('student_name', ''), row.get('class_name', ''),
-                               semester,
-                               row.get('triet_hoc'), row.get('tieng_anh_1'), row.get('tieng_anh_2'),
-                               row.get('tieng_an_do_1'), row.get('tieng_an_do_2'),
-                               row.get('gdtc'), row.get('tin_hoc_vp'), row.get('tieng_viet_th'),
-                               row.get('phap_luat'), row.get('logic'),
-                               diem_tb, xep_loai, ACADEMIC_YEAR))
+                    params = (
+                        row.get('mssv', ''), row.get('student_name', ''), row.get('class_name', ''),
+                        semester,
+                        None if pd.isna(row.get('triet_hoc')) else float(row.get('triet_hoc')),
+                        None if pd.isna(row.get('tieng_anh_1')) else float(row.get('tieng_anh_1')),
+                        None if pd.isna(row.get('tieng_anh_2')) else float(row.get('tieng_anh_2')),
+                        None if pd.isna(row.get('tieng_an_do_1')) else float(row.get('tieng_an_do_1')),
+                        None if pd.isna(row.get('tieng_an_do_2')) else float(row.get('tieng_an_do_2')),
+                        None if pd.isna(row.get('gdtc')) else float(row.get('gdtc')),
+                        None if pd.isna(row.get('tin_hoc_vp')) else float(row.get('tin_hoc_vp')),
+                        None if pd.isna(row.get('tieng_viet_th')) else float(row.get('tieng_viet_th')),
+                        None if pd.isna(row.get('phap_luat')) else float(row.get('phap_luat')),
+                        None if pd.isna(row.get('logic')) else float(row.get('logic')),
+                        float(diem_tb), xep_loai, int(ACADEMIC_YEAR)
+                    )
+                    try:
+                        c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
+                                     triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
+                                     gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
+                                     diem_tb, xep_loai, academic_year)
+                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', params)
+                        count_inserted += 1
+                    except Exception as e:
+                        # nếu lỗi 1 dòng, in log và tiếp tục các dòng khác
+                        print("Error inserting row during import:", e)
+                        print(traceback.format_exc())
                 conn.commit()
-                st.success(f"Đã import {len(df)} bản ghi!")
+                st.success(f"Đã import ~{count_inserted} bản ghi! (xem logs nếu có lỗi dòng)")
                 st.rerun()
         except Exception as e:
-            st.error(f"Lỗi: {e}")
+            st.error(f"Lỗi khi đọc file: {e}")
+            print(traceback.format_exc())
 
 def export_data(df):
     st.title("Export dữ liệu")
@@ -563,8 +672,7 @@ def show_charts(df):
     
     # 2. Phân bố xếp loại
     st.subheader("Phân bố xếp loại")
-    fig2 = px.pie(df, names='xep_loai', title='Tỷ lệ xếp loại học lực',
-                  color_discrete_sequence=px.colors.qualitative.Set3)
+    fig2 = px.pie(df, names='xep_loai', title='Tỷ lệ xếp loại học lực')
     st.plotly_chart(fig2, use_container_width=True)
     
     # 3. Điểm TB các môn (chỉ môn tính GPA)
@@ -572,9 +680,9 @@ def show_charts(df):
     subject_avg = []
     for key, info in SUBJECTS.items():
         if info['counts_gpa'] and key in df.columns:
-            avg = df[key].mean()
+            avg = pd.to_numeric(df[key], errors='coerce').mean()
             if pd.notna(avg):
-                subject_avg.append({'Môn': info['name'], 'Điểm TB': avg})
+                subject_avg.append({'Môn': info['name'], 'Điểm TB': float(avg)})
     
     if subject_avg:
         subject_df = pd.DataFrame(subject_avg)
@@ -595,7 +703,7 @@ def show_charts(df):
     st.plotly_chart(fig5, use_container_width=True)
 
 def student_dashboard(conn):
-    st.sidebar.title(f"{st.session_state['fullname']}")
+    st.sidebar.title(f"{st.session_state.get('fullname','')}")
     st.sidebar.write("Vai trò: **Học sinh**")
     
     if st.sidebar.button("Đăng xuất"):
@@ -617,7 +725,7 @@ def student_dashboard(conn):
         my_grades = df[df['mssv'] == student_id]
         if not my_grades.empty:
             for _, row in my_grades.iterrows():
-                semester = row.get('semester', 1)
+                semester = int(row.get('semester', 1))
                 st.subheader(f"Học kỳ {semester}")
                 
                 current_subjects = SEMESTER_1_SUBJECTS if semester == 1 else SEMESTER_2_SUBJECTS
