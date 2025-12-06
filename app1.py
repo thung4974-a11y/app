@@ -389,7 +389,7 @@ def teacher_dashboard(conn):
 
 def show_ranking(df):
     """Hiển thị bảng xếp hạng theo GPA"""
-    st.title("🏆 Xếp hạng theo điểm GPA")
+    st.title("Xếp hạng theo điểm GPA")
     
     if df.empty:
         st.warning("Chưa có dữ liệu để xếp hạng.")
@@ -417,7 +417,7 @@ def show_ranking(df):
         return
     
     # Hiển thị top 3
-    st.subheader("🥇 Top 3 sinh viên xuất sắc")
+    st.subheader("Top 3 sinh viên xuất sắc")
     top3 = ranking_df.head(3)
     
     cols = st.columns(3)
@@ -438,7 +438,7 @@ def show_ranking(df):
     st.divider()
     
     # Bảng xếp hạng đầy đủ
-    st.subheader("📊 Bảng xếp hạng đầy đủ")
+    st.subheader("Bảng xếp hạng đầy đủ")
     
     # Bộ lọc
     col1, col2 = st.columns(2)
@@ -464,7 +464,7 @@ def show_ranking(df):
     st.dataframe(display_df, use_container_width=True, hide_index=True)
     
     # Thống kê
-    st.subheader("📈 Thống kê xếp hạng")
+    st.subheader("Thống kê xếp hạng")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Tổng số SV", len(ranking_df))
@@ -961,3 +961,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
