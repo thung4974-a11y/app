@@ -363,8 +363,7 @@ def login_page(conn):
                 st.rerun()
             else:
                 st.error("Sai tên đăng nhập hoặc mật khẩu!")
-
-        st.info("**Tài khoản mặc định:**\n- Username: admin\n- Password: admin123")
+        # st.info("**Tài khoản mặc định:**\n- Username: admin\n- Password: admin123")
 
 def teacher_dashboard(conn):
     st.sidebar.title(f"{st.session_state.get('fullname','')}")
@@ -983,6 +982,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
