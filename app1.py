@@ -642,7 +642,7 @@ def manage_grades(conn, df):
     # Bộ lọc tìm kiếm
     col1, col2, col3 = st.columns(3)
     with col1:
-        search = st.text_input("🔍 Tìm kiếm (MSSV hoặc Tên)")
+        search = st.text_input("Tìm kiếm (MSSV hoặc Tên)")
     with col2:
         semester_filter = st.selectbox("Học kỳ", ['Tất cả', '1', '2'])
     with col3:
@@ -778,7 +778,7 @@ def manage_grades(conn, df):
             with col1:
                 confirm = st.checkbox("Tôi xác nhận muốn xóa bản ghi này")
             with col2:
-                if st.button("🗑️ Xóa", type="primary", disabled=not confirm):
+                if st.button("Xóa", type="primary", disabled=not confirm):
                     delete_grade(conn, selected_delete)
                     st.success(f"Đã xóa bản ghi của {delete_row['student_name']}!")
                     st.rerun()
@@ -798,7 +798,7 @@ def manage_grades(conn, df):
                     st.error(f"Bạn đã chọn {len(multi_delete_ids)} bản ghi để xóa!")
                     confirm_multi = st.checkbox("Tôi xác nhận muốn xóa TẤT CẢ các bản ghi đã chọn")
                     
-                    if st.button("🗑️ Xóa tất cả đã chọn", disabled=not confirm_multi):
+                    if st.button("Xóa tất cả đã chọn", disabled=not confirm_multi):
                         c = conn.cursor()
                         for del_id in multi_delete_ids:
                             c.execute("DELETE FROM grades WHERE id = ?", (del_id,))
@@ -1111,5 +1111,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
