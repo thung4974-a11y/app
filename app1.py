@@ -90,30 +90,6 @@ button[kind="primary"]:hover {
 """
 st.markdown(premium_sidebar, unsafe_allow_html=True)
 
-main_area = """
-<style>
-
-/* Nền khu vực nội dung chính (khung bên phải) */
-[data-testid="stAppViewContainer"] {
-    background: #ffffff !important;   /* Trắng tinh */
-}
-
-/* Nền khu vực chính của trang */
-main[data-testid="stMain"] {
-    background-color: #ffffff !important;
-    padding: 20px !important;
-    border-radius: 12px;
-}
-
-/* Nếu muốn cả vùng cuộn chính cũng trắng */
-[data-testid="stAppViewContainer"] > .main {
-    background: #ffffff !important;
-}
-
-</style>
-"""
-st.markdown(main_area, unsafe_allow_html=True)
-
 # ======================== CẤU HÌNH MÔN HỌC ========================
 SUBJECTS = {
     'triet': {'name': 'Triết', 'counts_gpa': True, 'semester': 1},
@@ -1216,6 +1192,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
