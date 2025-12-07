@@ -1050,7 +1050,7 @@ def student_dashboard(conn):
         # Hiển thị vị trí của sinh viên hiện tại
         if student_id:
             st.divider()
-            st.subheader("📍 Vị trí của bạn")
+            st.subheader("Vị trí của bạn")
             
             for sem_name, sem_val in [("Học kỳ 1", 1), ("Học kỳ 2", 2), ("Tổng hợp", 'all')]:
                 ranking_df = get_ranking_by_semester(df, semester=sem_val)
@@ -1093,7 +1093,7 @@ def student_dashboard(conn):
 
 # ======================== MAIN ========================
 def main():
-    st.set_page_config(page_title="Quản lý điểm sinh viên", page_icon="📚", layout="wide")
+    st.set_page_config(page_title="Quản lý điểm sinh viên", page_icon="logo.jpg", layout="wide")
     
     conn = init_db()
     
@@ -1110,6 +1110,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
