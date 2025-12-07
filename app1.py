@@ -87,6 +87,22 @@ button[kind="primary"]:hover {
 }
 
 </style>
+<style>
+/* KHÓA KHÔNG CHO KÉO SIZE SIDEBAR */
+[data-testid="stSidebar"] {
+    resize: none !important;
+    width: 260px !important;      /* cố định chiều rộng */
+    min-width: 260px !important;
+    max-width: 260px !important;
+    overflow: auto !important;
+}
+
+/* Ẩn thanh kéo resize */
+[data-testid="stSidebar"]::after {
+    display: none !important;
+}
+</style>
+
 """
 st.markdown(premium_sidebar, unsafe_allow_html=True)
 
@@ -1192,6 +1208,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
