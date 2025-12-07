@@ -667,7 +667,7 @@ def manage_grades(conn, df):
     st.divider()
     
     # Tabs cho Sửa và Xóa
-    tab1, tab2 = st.tabs(["✏️ Sửa điểm", "🗑️ Xóa điểm"])
+    tab1, tab2 = st.tabs(["Sửa điểm", "Xóa điểm"])
     
     with tab1:
         st.subheader("Sửa điểm sinh viên")
@@ -706,7 +706,7 @@ def manage_grades(conn, df):
                         key=f"edit_{key}"
                     )
             
-            if st.button("💾 Lưu thay đổi", type="primary"):
+            if st.button("Lưu thay đổi", type="primary"):
                 # Tính lại điểm TB
                 scores_for_avg = {k: v for k, v in new_scores.items() 
                                if SUBJECTS[k]['counts_gpa'] and v > 0}
@@ -1111,4 +1111,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
