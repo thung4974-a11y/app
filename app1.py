@@ -832,7 +832,7 @@ def clean_data_page(conn, df):
     
     st.divider()
     
-    st.subheader("🔧 Thực hiện làm sạch")
+    st.subheader("Thực hiện làm sạch")
     st.write("Quá trình này sẽ:")
     st.write("- Xóa các bản ghi trùng MSSV + Học kỳ (giữ bản ghi đầu tiên)")
     st.write("- Xóa các điểm có giá trị âm")
@@ -1110,6 +1110,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
