@@ -372,26 +372,6 @@ def login_page(conn):
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
-    eye_white = """
-    <style>
-    /* Đổi màu icon con mắt thành màu trắng */
-    button[aria-label="Show password"] svg,
-    button[aria-label="Hide password"] svg {
-        fill: white !important;
-        stroke: white !important;
-    }
-    
-    /* Nền của nút con mắt trong suốt */
-    button[aria-label="Show password"],
-    button[aria-label="Hide password"] {
-        background-color: transparent !important;
-        border: none !important;
-    }
-    </style>
-    """
-    st.markdown(eye_white, unsafe_allow_html=True)
-
-
     # ===== FORM LOGIN =====
     st.title("Hệ thống Quản lý Điểm Sinh viên")
     # st.subheader("Đăng nhập")
@@ -1034,6 +1014,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
