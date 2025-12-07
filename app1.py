@@ -9,6 +9,87 @@ import hashlib
 from datetime import datetime
 import traceback
 
+premium_sidebar = """
+<style>
+
+/* ==== Toàn bộ Sidebar ==== */
+[data-testid="stSidebar"] {
+    background: rgba(15, 32, 65, 0.65) !important;  /* Glass xanh navy */
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+
+    border-right: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 4px 0 25px rgba(0,0,0,0.55);
+
+    padding-top: 20px !important;
+}
+
+/* ==== Bo viền trong Sidebar ==== */
+[data-testid="stSidebar"] > div:first-child {
+    padding: 10px;
+    border-radius: 20px;
+}
+
+/* ==== Chỉnh màu chữ ==== */
+[data-testid="stSidebar"] * {
+    color: #ffffff !important;
+    font-weight: 500 !important;
+    font-family: "Segoe UI", sans-serif;
+}
+
+/* ==== Style nút chọn radio / selectbox ==== */
+div[role="radiogroup"] > label {
+    background: rgba(255, 255, 255, 0.06);
+    padding: 10px 14px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+    transition: 0.25s ease;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+div[role="radiogroup"] > label:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(4px);
+}
+
+/* ==== Radio đang được chọn ==== */
+div[role="radiogroup"] > label[data-testid="stRadioOption"]:has(input:checked) {
+    background: rgba(0, 168, 255, 0.25) !important;
+    border: 1px solid rgba(0,168,255,0.6) !important;
+    box-shadow: 0 0 10px rgba(0,168,255,0.6);
+    transform: translateX(6px);
+}
+
+/* ==== Style cho nút bấm ==== */
+button[kind="primary"] {
+    background: linear-gradient(135deg, #0abde3, #0984e3) !important;
+    padding: 10px 20px !important;
+    border-radius: 12px !important;
+    border: none !important;
+    transition: 0.25s ease;
+}
+
+button[kind="primary"]:hover {
+    transform: scale(1.04);
+    box-shadow: 0 4px 20px rgba(0,150,255,0.45);
+}
+
+/* ==== Scrollbar sidebar đẹp ==== */
+[data-testid="stSidebar"] ::-webkit-scrollbar {
+    width: 8px;
+}
+[data-testid="stSidebar"] ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.25);
+    border-radius: 10px;
+}
+[data-testid="stSidebar"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.45);
+}
+
+</style>
+"""
+st.markdown(premium_sidebar, unsafe_allow_html=True)
+
 # ======================== CẤU HÌNH MÔN HỌC ========================
 SUBJECTS = {
     'triet': {'name': 'Triết', 'counts_gpa': True, 'semester': 1},
@@ -1110,6 +1191,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
