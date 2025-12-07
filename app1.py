@@ -89,6 +89,25 @@ button[kind="primary"]:hover {
 </style>
 """
 st.markdown(premium_sidebar, unsafe_allow_html=True)
+premium_sidebar = """
+<style>
+
+    ...  /* toàn bộ CSS cũ của anh giữ nguyên */
+
+    /* ==== ẨN CHỮ “KEYBOARD…” & HOTKEY TRONG SIDEBAR ==== */
+    kbd, 
+    div[class*="stKeyboard"], 
+    .st-emotion-cache-1y4p8pa, 
+    .st-emotion-cache-1wbqy5l {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+    }
+
+</style>
+"""
+st.markdown(premium_sidebar, unsafe_allow_html=True)
 
 # ======================== CẤU HÌNH MÔN HỌC ========================
 SUBJECTS = {
@@ -1191,6 +1210,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
