@@ -331,15 +331,47 @@ def login_page(conn):
         background-repeat: no-repeat;
         background-position: center;
     }
-    [data-testid="stHeader"] {
-        background: rgba(0,0,0,0);
-    }
-    [data-testid="stFooter"] {
+    [data-testid="stHeader"], [data-testid="stFooter"] {
         background: rgba(0,0,0,0);
     }
     </style>
     """
     st.markdown(page_bg, unsafe_allow_html=True)
+
+    # ===== CUSTOM UI =====
+    custom_css = """
+    <style>
+
+    h1, h2 {
+        text-align: center !important;
+    }
+
+    /* Làm text input trắng */
+    input[type="text"], input[type="password"] {
+        background-color: white !important;
+        color: black !important;
+        border-radius: 8px;
+        border: 1px solid #cccccc !important;
+    }
+
+    /* Style cho nút Đăng nhập */
+    button[kind="primary"] {
+        background-color: white !important;
+        color: black !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: bold !important;
+    }
+
+    /* Khi hover */
+    button[kind="primary"]:hover {
+        background-color: #e6e6e6 !important;
+        color: black !important;
+    }
+
+    </style>
+    """
+    st.markdown(custom_css, unsafe_allow_html=True)
 
     # ===== FORM LOGIN =====
     st.title("Hệ thống Quản lý Điểm Sinh viên")
@@ -363,7 +395,8 @@ def login_page(conn):
                 st.rerun()
             else:
                 st.error("Sai tên đăng nhập hoặc mật khẩu!")
-        # st.info("**Tài khoản mặc định:**\n- Username: admin\n- Password: admin123")
+
+        st.info("**Tài khoản mặc định:**\n- Username: admin\n- Password: admin123")
 
 def teacher_dashboard(conn):
     st.sidebar.title(f"{st.session_state.get('fullname','')}")
@@ -982,6 +1015,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
