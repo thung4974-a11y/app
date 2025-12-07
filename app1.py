@@ -1093,7 +1093,7 @@ def student_dashboard(conn):
 
 # ======================== MAIN ========================
 def main():
-    st.set_page_config(page_title="Quản lý điểm sinh viên", page_icon="logo.jpg", layout="wide")
+    st.set_page_config(page_title="Quản lý điểm sinh viên", page_icon="logotl.jpg", layout="wide")
     
     conn = init_db()
     
@@ -1110,6 +1110,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
