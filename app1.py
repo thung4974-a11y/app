@@ -372,10 +372,29 @@ def login_page(conn):
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
+    eye_white = """
+    <style>
+    /* Đổi màu icon con mắt thành màu trắng */
+    button[aria-label="Show password"] svg,
+    button[aria-label="Hide password"] svg {
+        fill: white !important;
+        stroke: white !important;
+    }
+    
+    /* Nền của nút con mắt trong suốt */
+    button[aria-label="Show password"],
+    button[aria-label="Hide password"] {
+        background-color: transparent !important;
+        border: none !important;
+    }
+    </style>
+    """
+    st.markdown(eye_white, unsafe_allow_html=True)
+
 
     # ===== FORM LOGIN =====
     st.title("Hệ thống Quản lý Điểm Sinh viên")
-    st.subheader("Đăng nhập")
+    # st.subheader("Đăng nhập")
     
     col1, col2, col3 = st.columns([1, 2, 1])
 
@@ -396,7 +415,7 @@ def login_page(conn):
             else:
                 st.error("Sai tên đăng nhập hoặc mật khẩu!")
 
-        st.info("**Tài khoản mặc định:**\n- Username: admin\n- Password: admin123")
+        # st.info("**Tài khoản mặc định:**\n- Username: admin\n- Password: admin123")
 
 def teacher_dashboard(conn):
     st.sidebar.title(f"{st.session_state.get('fullname','')}")
@@ -1015,6 +1034,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
