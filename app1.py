@@ -14,7 +14,7 @@ premium_sidebar = """
 
 /* ==== Toàn bộ Sidebar ==== */
 [data-testid="stSidebar"] {
-    background: rgba(15, 32, 65, 0.65) !important;  /* Glass xanh navy */
+    background: rgba(15, 32, 65, 0.65) !important;
     backdrop-filter: blur(18px) !important;
     -webkit-backdrop-filter: blur(18px) !important;
 
@@ -37,7 +37,7 @@ premium_sidebar = """
     font-family: "Segoe UI", sans-serif;
 }
 
-/* ==== Style nút chọn radio / selectbox ==== */
+/* ==== Style nút chọn radio ==== */
 div[role="radiogroup"] > label {
     background: rgba(255, 255, 255, 0.06);
     padding: 10px 14px;
@@ -52,7 +52,7 @@ div[role="radiogroup"] > label:hover {
     transform: translateX(4px);
 }
 
-/* ==== Radio đang được chọn ==== */
+/* ==== Radio được chọn ==== */
 div[role="radiogroup"] > label[data-testid="stRadioOption"]:has(input:checked) {
     background: rgba(0, 168, 255, 0.25) !important;
     border: 1px solid rgba(0,168,255,0.6) !important;
@@ -60,7 +60,7 @@ div[role="radiogroup"] > label[data-testid="stRadioOption"]:has(input:checked) {
     transform: translateX(6px);
 }
 
-/* ==== Style cho nút bấm ==== */
+/* ==== Style nút bấm ==== */
 button[kind="primary"] {
     background: linear-gradient(135deg, #0abde3, #0984e3) !important;
     padding: 10px 20px !important;
@@ -74,7 +74,7 @@ button[kind="primary"]:hover {
     box-shadow: 0 4px 20px rgba(0,150,255,0.45);
 }
 
-/* ==== Scrollbar sidebar đẹp ==== */
+/* ==== Scrollbar ==== */
 [data-testid="stSidebar"] ::-webkit-scrollbar {
     width: 8px;
 }
@@ -86,24 +86,24 @@ button[kind="primary"]:hover {
     background: rgba(255,255,255,0.45);
 }
 
-</style>
-"""
-st.markdown(premium_sidebar, unsafe_allow_html=True)
-premium_sidebar = """
-<style>
-
-    ...  /* toàn bộ CSS cũ của anh giữ nguyên */
-
-    /* ==== ẨN CHỮ “KEYBOARD…” & HOTKEY TRONG SIDEBAR ==== */
-    kbd, 
-    div[class*="stKeyboard"], 
-    .st-emotion-cache-1y4p8pa, 
-    .st-emotion-cache-1wbqy5l {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        height: 0 !important;
-    }
+/* ==== ẨN HOÀN TOÀN CHỮ “keyboard…” ==== */
+kbd,
+[data-testid="stSidebar"] kbd,
+[class*="keyboard"],
+[class*="hotkey"],
+div[class*="stKeyboard"],
+.st-emotion-cache-12fmjuu,
+.st-emotion-cache-1inwz65,
+.st-emotion-cache-1gfgh8j,
+.st-emotion-cache-1kyxreq,
+.st-emotion-cache-1y4p8pa {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    pointer-events: none !important;
+}
 
 </style>
 """
@@ -1210,6 +1210,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
