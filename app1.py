@@ -321,13 +321,162 @@ def delete_user(conn, user_id):
 
 # ======================== GIAO DIỆN ========================
 def login_page(conn):
-    st.title("Hệ thống Quản lý Điểm Sinh viên")
-    st.subheader("Đăng nhập")
+    # Custom CSS cho trang đăng nhập
+    st.markdown("""
+    <style>
+    /* Ẩn các element mặc định của Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stApp > header {display: none;}
     
-    col1, col2, col3 = st.columns([1, 2, 1])
+    /* Nền chính */
+    .stApp {
+        background: linear-gradient(135deg, #1a1f4e 0%, #2d1b69 50%, #1a1f4e 100%);
+        min-height: 100vh;
+    }
+    
+    /* Container chính */
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Tam giác xanh lá góc trái */
+    .triangle-decoration {
+        position: fixed;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 150px solid #22c55e;
+        border-top: 200px solid transparent;
+        border-bottom: 200px solid transparent;
+        z-index: 1;
+    }
+    
+    /* Họa tiết chấm tròn */
+    .dots-pattern {
+        position: fixed;
+        right: 10%;
+        top: 20%;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 15px;
+        opacity: 0.3;
+    }
+    
+    .dot {
+        width: 8px;
+        height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+    }
+    
+    /* Khung đăng nhập */
+    .login-card {
+        background: white;
+        border-radius: 20px;
+        padding: 50px 40px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+        position: relative;
+        z-index: 10;
+    }
+    
+    .login-title {
+        color: #1a1f4e;
+        font-size: 28px;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    /* Style cho input */
+    .stTextInput > div > div > input {
+        background: #f8fafc !important;
+        border: 2px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        padding: 15px 20px !important;
+        font-size: 16px !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #22c55e !important;
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1) !important;
+    }
+    
+    .stTextInput > label {
+        color: #64748b !important;
+        font-weight: 500 !important;
+        font-size: 14px !important;
+    }
+    
+    /* Style cho button */
+    .stButton > button {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 15px 30px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        width: 100% !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3) !important;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4) !important;
+    }
+    
+    /* Ẩn decoration mặc định */
+    .stDeployButton {display: none;}
+    div[data-testid="stDecoration"] {display: none;}
+    
+    /* Info box */
+    .stAlert {
+        background: #f0fdf4 !important;
+        border: 1px solid #22c55e !important;
+        border-radius: 12px !important;
+    }
+    
+    /* Error box */
+    .stException, div[data-baseweb="notification"] {
+        border-radius: 12px !important;
+    }
+    </style>
+    
+    <!-- Decorations -->
+    <div class="triangle-decoration"></div>
+    <div class="dots-pattern">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Layout căn giữa
+    col1, col2, col3 = st.columns([1, 1.5, 1])
+    
     with col2:
-        username = st.text_input("Tên đăng nhập")
-        password = st.text_input("Mật khẩu", type="password")
+        st.markdown('<div class="login-card">', unsafe_allow_html=True)
+        st.markdown('<h1 class="login-title">Đăng nhập</h1>', unsafe_allow_html=True)
+        
+        username = st.text_input("Tên đăng nhập", placeholder="Nhập tên đăng nhập...")
+        password = st.text_input("Mật khẩu", type="password", placeholder="Nhập mật khẩu...")
+        
+        st.write("")  # Spacing
         
         if st.button("Đăng nhập", use_container_width=True):
             user = verify_user(conn, username, password)
@@ -342,7 +491,10 @@ def login_page(conn):
             else:
                 st.error("Sai tên đăng nhập hoặc mật khẩu!")
         
-        st.info("**Tài khoản mặc định:**\n- Username: admin\n- Password: admin123")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.info("**Tài khoản mặc định:**\n- Username: `admin`\n- Password: `admin123`")
+
 
 def teacher_dashboard(conn):
     st.sidebar.title(f"{st.session_state.get('fullname','')}")
@@ -961,4 +1113,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
