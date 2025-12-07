@@ -1192,7 +1192,45 @@ def student_dashboard(conn):
 # ======================== MAIN ========================
 def main():
     st.set_page_config(page_title="Quản lý điểm sinh viên", page_icon="logotl.jpg", layout="wide")
-    
+        # ======= DARK / LIGHT MODE SWITCH =======
+    mode = st.sidebar.toggle("Dark / Light Mode", value=False)
+
+    if mode:
+        # Dark mode
+        st.markdown("""
+            <style>
+                body, .stApp { 
+                    background-color: #0E1117 !important; 
+                    color: white !important;
+                }
+                .css-10trblm, .stTextInput, .stSelectbox, .stDataFrame {
+                    color: white !important;
+                }
+                .stButton>button {
+                    background-color: #1F6FEB !important;
+                    color: white !important;
+                    border-radius: 8px;
+                    padding: 8px 16px;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+    else:
+        # Light mode
+        st.markdown("""
+            <style>
+                body, .stApp { 
+                    background-color: #FFFFFF !important; 
+                    color: black !important;
+                }
+                .stButton>button {
+                    background-color: #0052CC !important;
+                    color: white !important;
+                    border-radius: 8px;
+                    padding: 8px 16px;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+
     conn = init_db()
     
     if 'logged_in' not in st.session_state:
@@ -1208,6 +1246,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
