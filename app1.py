@@ -1182,9 +1182,26 @@ def main():
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
     
+    # ===== CHƯA LOGIN → vào trang đăng nhập =====
     if not st.session_state['logged_in']:
         login_page(conn)
+
+    # ===== ĐÃ LOGIN → giao diện chính nền trắng =====
     else:
+        white_bg = """
+        <style>
+        [data-testid="stAppViewContainer"] {
+            background: #ffffff !important;
+        }
+        main[data-testid="stMain"] {
+            background-color: #ffffff !important;
+            padding: 20px !important;
+        }
+        </style>
+        """
+        st.markdown(white_bg, unsafe_allow_html=True)
+
+        # Gọi dashboard theo role
         if st.session_state['role'] == 'teacher':
             teacher_dashboard(conn)
         else:
@@ -1192,6 +1209,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
