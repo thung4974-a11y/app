@@ -400,7 +400,6 @@ def login_page(conn):
 def teacher_dashboard(conn):
     st.sidebar.title(f"{st.session_state.get('fullname','')}")
     st.sidebar.write("Vai trò: **Giáo viên**")
-    st.sidebar.write(f"Năm học: **{ACADEMIC_YEAR}**")
     
     if st.sidebar.button("Đăng xuất"):
         for key in list(st.session_state.keys()):
@@ -1111,6 +1110,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
