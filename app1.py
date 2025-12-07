@@ -11,20 +11,20 @@ import traceback
 
 # ======================== CẤU HÌNH MÔN HỌC ========================
 SUBJECTS = {
-    'triet_hoc': {'name': 'Triết học Mác-Lênin', 'counts_gpa': True, 'semester': 1},
-    'tieng_anh_1': {'name': 'Tiếng Anh cơ sở 1', 'counts_gpa': True, 'semester': 1, 'mandatory': True},
-    'tieng_anh_2': {'name': 'Tiếng Anh cơ sở 2', 'counts_gpa': True, 'semester': 2, 'prerequisite': 'tieng_anh_1'},
+    'triet': {'name': 'Triết', 'counts_gpa': True, 'semester': 1},
+    'giai_tich_1': {'name': 'Giải tích 1', 'counts_gpa': True, 'semester': 1, 'mandatory': True},
+    'giai_tich_2': {'name': 'Giải tích 2', 'counts_gpa': True, 'semester': 2, 'prerequisite': 'giai_tich_1'},
     'tieng_an_do_1': {'name': 'Tiếng Ấn Độ 1', 'counts_gpa': True, 'semester': 1, 'mandatory': True},
     'tieng_an_do_2': {'name': 'Tiếng Ấn Độ 2', 'counts_gpa': True, 'semester': 2, 'prerequisite': 'tieng_an_do_1'},
-    'gdtc': {'name': 'Giáo dục thể chất', 'counts_gpa': False, 'semester': 1},
-    'tin_hoc_vp': {'name': 'Tin học văn phòng', 'counts_gpa': True, 'semester': 1},
-    'tieng_viet_th': {'name': 'Tiếng Việt thực hành', 'counts_gpa': True, 'semester': 2},
-    'phap_luat': {'name': 'Pháp luật đại cương', 'counts_gpa': True, 'semester': 2},
+    'gdtc': {'name': 'GDTC', 'counts_gpa': False, 'semester': 1},
+    'thvp': {'name': 'THVP', 'counts_gpa': True, 'semester': 1},
+    'tvth': {'name': 'TVTH', 'counts_gpa': True, 'semester': 2},
+    'phap_luat': {'name': 'Pháp luật', 'counts_gpa': True, 'semester': 2},
     'logic': {'name': 'Logic và suy luận toán học', 'counts_gpa': True, 'semester': 2},
 }
 
-SEMESTER_1_SUBJECTS = ['triet_hoc', 'tieng_anh_1', 'tieng_an_do_1', 'gdtc', 'tin_hoc_vp']
-SEMESTER_2_SUBJECTS = ['tieng_anh_2', 'tieng_an_do_2', 'tieng_viet_th', 'phap_luat', 'logic']
+SEMESTER_1_SUBJECTS = ['triet', 'giai_tich_1', 'tieng_an_do_1', 'gdtc', 'thvp']
+SEMESTER_2_SUBJECTS = ['giai_tich_2', 'tieng_an_do_2', 'tvth', 'phap_luat', 'logic']
 ACADEMIC_YEAR = 1  # Năm học cố định
 
 # ======================== CẤU HÌNH DATABASE ========================
@@ -50,14 +50,14 @@ def init_db(db_path='student_grades.db'):
         student_name TEXT NOT NULL,
         class_name TEXT,
         semester INTEGER DEFAULT 1,
-        triet_hoc REAL,
-        tieng_anh_1 REAL,
-        tieng_anh_2 REAL,
+        triet REAL,
+        giai_tich_1 REAL,
+        giai_tich_2 REAL,
         tieng_an_do_1 REAL,
         tieng_an_do_2 REAL,
         gdtc REAL,
-        tin_hoc_vp REAL,
-        tieng_viet_th REAL,
+        thvp REAL,
+        tvth REAL,
         phap_luat REAL,
         logic REAL,
         diem_tb REAL,
@@ -112,7 +112,7 @@ def calculate_average(row):
     return round(float(np.mean(scores)), 2) if scores else 0.0
 
 def can_take_semester_2(conn, mssv):
-    """Kiểm tra điều kiện học kỳ 2: TB Tiếng Anh 1 + Tiếng Ấn Độ 1 >= 4"""
+    """Kiểm tra điều kiện học kỳ 2: TB Giải tích 1 + Tiếng Ấn Độ 1 >= 4"""
     df = load_grades(conn)
     student_sem1 = df[(df['mssv'] == mssv) & (df['semester'] == 1)]
     
@@ -121,14 +121,14 @@ def can_take_semester_2(conn, mssv):
     
     row = student_sem1.iloc[0]
     try:
-        tieng_anh_1 = float(row.get('tieng_anh_1') or 0)
+        giai_tich_1 = float(row.get('giai_tich_1') or 0)
     except Exception:
-        tieng_anh_1 = 0
+        giai_tich_1 = 0
     try:
         tieng_an_do_1 = float(row.get('tieng_an_do_1') or 0)
     except Exception:
         tieng_an_do_1 = 0
-    avg = (tieng_anh_1 + tieng_an_do_1) / 2.0
+    avg = (giai_tich_1 + tieng_an_do_1) / 2.0
     
     if avg >= 4:
         return True, f"Đủ điều kiện (TB: {avg:.2f})"
@@ -221,8 +221,8 @@ def save_grade(conn, data):
     c = conn.cursor()
     try:
         c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester, 
-                     triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
-                     gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
+                     triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2,
+                     gdtc, thvp, tvth, phap_luat, logic,
                      diem_tb, xep_loai, academic_year)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', data)
         conn.commit()
@@ -274,16 +274,16 @@ def clean_data(conn):
             params = (
                 row.get('mssv', ''), row.get('student_name', ''), row.get('class_name', None),
                 int(row.get('semester', 1)) if not pd.isna(row.get('semester', 1)) else 1,
-                safe_val('triet_hoc'), safe_val('tieng_anh_1'), safe_val('tieng_anh_2'),
+                safe_val('triet'), safe_val('giai_tich_1'), safe_val('giai_tich_2'),
                 safe_val('tieng_an_do_1'), safe_val('tieng_an_do_2'),
-                safe_val('gdtc'), safe_val('tin_hoc_vp'), safe_val('tieng_viet_th'),
+                safe_val('gdtc'), safe_val('thvp'), safe_val('tvth'),
                 safe_val('phap_luat'), safe_val('logic'),
                 float(diem_tb), xep_loai, int(ACADEMIC_YEAR)
             )
             try:
                 c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
-                             triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
-                             gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
+                             triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2,
+                             gdtc, thvp, tvth, phap_luat, logic,
                              diem_tb, xep_loai, academic_year)
                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', params)
                 inserted += 1
@@ -616,14 +616,14 @@ def add_grade_form(conn):
             
             params = (
                 mssv, student_name, class_name, int(semester),
-                float(all_scores['triet_hoc']) if all_scores['triet_hoc'] is not None else None,
-                float(all_scores['tieng_anh_1']) if all_scores['tieng_anh_1'] is not None else None,
-                float(all_scores['tieng_anh_2']) if all_scores['tieng_anh_2'] is not None else None,
+                float(all_scores['triet']) if all_scores['triet'] is not None else None,
+                float(all_scores['giai_tich_1']) if all_scores['giai_tich_1'] is not None else None,
+                float(all_scores['giai_tich_2']) if all_scores['giai_tich_2'] is not None else None,
                 float(all_scores['tieng_an_do_1']) if all_scores['tieng_an_do_1'] is not None else None,
                 float(all_scores['tieng_an_do_2']) if all_scores['tieng_an_do_2'] is not None else None,
                 float(all_scores['gdtc']) if all_scores['gdtc'] is not None else None,
-                float(all_scores['tin_hoc_vp']) if all_scores['tin_hoc_vp'] is not None else None,
-                float(all_scores['tieng_viet_th']) if all_scores['tieng_viet_th'] is not None else None,
+                float(all_scores['thvp']) if all_scores['thvp'] is not None else None,
+                float(all_scores['tvth']) if all_scores['tvth'] is not None else None,
                 float(all_scores['phap_luat']) if all_scores['phap_luat'] is not None else None,
                 float(all_scores['logic']) if all_scores['logic'] is not None else None,
                 float(diem_tb), xep_loai, int(ACADEMIC_YEAR)
@@ -763,7 +763,7 @@ def import_data(conn):
     **Lưu ý:** 
     - Học kỳ (semester) = 1 hoặc 2
     - Năm học cố định = {ACADEMIC_YEAR}
-    - Giáo dục thể chất không tính vào GPA
+    - GDTC không tính vào GPA
     """)
     
     uploaded_file = st.file_uploader("Chọn file CSV", type=['csv'])
@@ -792,22 +792,22 @@ def import_data(conn):
                     params = (
                         row.get('mssv', ''), row.get('student_name', ''), row.get('class_name', ''),
                         semester,
-                        None if pd.isna(row.get('triet_hoc')) else float(row.get('triet_hoc')),
-                        None if pd.isna(row.get('tieng_anh_1')) else float(row.get('tieng_anh_1')),
-                        None if pd.isna(row.get('tieng_anh_2')) else float(row.get('tieng_anh_2')),
+                        None if pd.isna(row.get('triet')) else float(row.get('triet')),
+                        None if pd.isna(row.get('giai_tich_1')) else float(row.get('giai_tich_1')),
+                        None if pd.isna(row.get('giai_tich_2')) else float(row.get('giai_tich_2')),
                         None if pd.isna(row.get('tieng_an_do_1')) else float(row.get('tieng_an_do_1')),
                         None if pd.isna(row.get('tieng_an_do_2')) else float(row.get('tieng_an_do_2')),
                         None if pd.isna(row.get('gdtc')) else float(row.get('gdtc')),
-                        None if pd.isna(row.get('tin_hoc_vp')) else float(row.get('tin_hoc_vp')),
-                        None if pd.isna(row.get('tieng_viet_th')) else float(row.get('tieng_viet_th')),
+                        None if pd.isna(row.get('thvp')) else float(row.get('thvp')),
+                        None if pd.isna(row.get('tvth')) else float(row.get('tvth')),
                         None if pd.isna(row.get('phap_luat')) else float(row.get('phap_luat')),
                         None if pd.isna(row.get('logic')) else float(row.get('logic')),
                         float(diem_tb), xep_loai, int(ACADEMIC_YEAR)
                     )
                     try:
                         c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
-                                     triet_hoc, tieng_anh_1, tieng_anh_2, tieng_an_do_1, tieng_an_do_2,
-                                     gdtc, tin_hoc_vp, tieng_viet_th, phap_luat, logic,
+                                     triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2,
+                                     gdtc, thvp, tvth, phap_luat, logic,
                                      diem_tb, xep_loai, academic_year)
                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', params)
                         count_inserted += 1
@@ -1014,10 +1014,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
