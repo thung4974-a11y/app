@@ -1192,44 +1192,86 @@ def student_dashboard(conn):
 # ======================== MAIN ========================
 def main():
     st.set_page_config(page_title="Quản lý điểm sinh viên", page_icon="logotl.jpg", layout="wide")
-        # ======= DARK / LIGHT MODE SWITCH =======
-    # mode = st.sidebar.toggle("Dark / Light Mode", value=False)
+           # ======= DARK / LIGHT MODE SWITCH =======
+    mode = st.sidebar.toggle("Dark / Light Mode", value=False)
 
-    # if mode:
-    #     # Dark mode
-    #     st.markdown("""
-    #         <style>
-    #             body, .stApp { 
-    #                 background-color: #0E1117 !important; 
-    #                 color: white !important;
-    #             }
-    #             .css-10trblm, .stTextInput, .stSelectbox, .stDataFrame {
-    #                 color: white !important;
-    #             }
-    #             .stButton>button {
-    #                 background-color: #1F6FEB !important;
-    #                 color: white !important;
-    #                 border-radius: 8px;
-    #                 padding: 8px 16px;
-    #             }
-    #         </style>
-    #     """, unsafe_allow_html=True)
-    # else:
-    #     # Light mode
-    #     st.markdown("""
-    #         <style>
-    #             body, .stApp { 
-    #                 background-color: #FFFFFF !important; 
-    #                 color: black !important;
-    #             }
-    #             .stButton>button {
-    #                 background-color: #0052CC !important;
-    #                 color: white !important;
-    #                 border-radius: 8px;
-    #                 padding: 8px 16px;
-    #             }
-    #         </style>
-    #     """, unsafe_allow_html=True)
+    if mode:
+        # DARK MODE
+        st.markdown("""
+        <style>
+            /* Nền tổng thể */
+            .stApp {
+                background-color: #0E1117 !important;
+                color: #E6E6E6 !important;
+            }
+
+            /* Sidebar */
+            section[data-testid="stSidebar"] {
+                background-color: #111827 !important;
+                border-right: 1px solid #1F2937 !important;
+            }
+
+            /* Các box */
+            .stTextInput>div>div>input,
+            .stSelectbox>div>div>select,
+            .stTextArea textarea {
+                background-color: #1F2937 !important;
+                color: #E6E6E6 !important;
+                border: 1px solid #374151 !important;
+            }
+
+            /* Bảng dữ liệu */
+            .stDataFrame {
+                background-color: #111827 !important;
+            }
+
+            /* Nút */
+            .stButton>button {
+                background-color: #2563EB !important;
+                color: white !important;
+                border-radius: 8px;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
+    else:
+        # LIGHT MODE
+        st.markdown("""
+        <style>
+            /* Nền tổng thể */
+            .stApp {
+                background-color: #FFFFFF !important;
+                color: #000000 !important;
+            }
+
+            /* Sidebar */
+            section[data-testid="stSidebar"] {
+                background-color: #F3F4F6 !important;
+                border-right: 1px solid #E5E7EB !important;
+            }
+
+            /* Box input */
+            .stTextInput>div>div>input,
+            .stSelectbox>div>div>select,
+            .stTextArea textarea {
+                background-color: #FFFFFF !important;
+                color: #000000 !important;
+                border: 1px solid #D1D5DB !important;
+            }
+
+            /* Bảng dữ liệu */
+            .stDataFrame {
+                background-color: white !important;
+            }
+
+            /* Nút */
+            .stButton>button {
+                background-color: #0052CC !important;
+                color: white !important;
+                border-radius: 8px;
+            }
+        </style>
+        """, unsafe_allow_html=True)
 
     conn = init_db()
     
@@ -1246,6 +1288,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
