@@ -1180,38 +1180,61 @@ def export_data(df):
 
 def manage_users(conn):
     st.title("Quản lý tài khoản")
-    
-    tab1, tab2 = st.tabs(["Danh sách", "Thêm mới"])
-    
-    with tab1:
+
+    # ==========================
+    #       TABS
+    # ==========================
+    tab_list, tab_create = st.tabs(["Danh sách", "Thêm mới"])
+
+    # ============================================
+    #                 TAB 1: DANH SÁCH USER
+    # ============================================
+    with tab_list:
         users_df = get_all_users(conn)
         st.dataframe(users_df, use_container_width=True)
-        
-        if len(users_df) > 1:
-            user_to_delete = st.selectbox("Chọn user để xóa", 
-                                          users_df[users_df['username'] != 'admin']['id'].tolist())
+
+        # Nếu có user để xóa ngoài admin
+        deletable_users = users_df[users_df["username"] != "admin"]
+
+        if not deletable_users.empty:
+            user_id = st.selectbox(
+                "Chọn user để xóa",
+                deletable_users["id"].tolist()
+            )
+
             if st.button("Xóa user"):
-                delete_user(conn, user_to_delete)
+                delete_user(conn, user_id)
                 st.success("Đã xóa!")
                 st.rerun()
-    
-    with tab2:
+
+    # ============================================
+    #                 TAB 2: THÊM USER
+    # ============================================
+    with tab_create:
         st.subheader("Thêm tài khoản mới")
-        new_username = st.text_input("Username")
-        new_password = st.text_input("Password", type="password")
-        new_fullname = st.text_input("Họ tên")
-        new_role = st.selectbox("Vai trò", ["student", "teacher"])
-        new_student_id = st.text_input("MSSV (nếu là học sinh)") if new_role == "student" else None
-        
+
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        fullname = st.text_input("Họ tên")
+        role = st.selectbox("Vai trò", ["student", "teacher"])
+
+        student_id = None
+        if role == "student":
+            student_id = st.text_input("MSSV")
+
         if st.button("Tạo tài khoản"):
-            if new_username and new_password and new_fullname:
-                if create_user(conn, new_username, new_password, new_fullname, new_role, new_student_id):
-                    st.success("Đã tạo tài khoản!")
-                    st.rerun()
-                else:
-                    st.error("Username đã tồn tại!")
+            # Kiểm tra thông tin nhập
+            if not username or not password or not fullname:
+                st.error("Vui lòng điền đầy đủ thông tin.")
+                return
+
+            success = create_user(conn, username, password, fullname, role, student_id)
+
+            if success:
+                st.success("Đã tạo tài khoản!")
+                st.rerun()
             else:
-                st.error("Vui lòng điền đầy đủ thông tin!")
+                st.error("Username đã tồn tại!")
 
 def show_charts(df):
     st.title("Biểu đồ phân tích")
@@ -1376,6 +1399,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
