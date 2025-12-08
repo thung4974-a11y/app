@@ -1217,7 +1217,7 @@ def manage_users(conn):
 
         student_id = st.text_input("MSSV") if role == "student" else None
 
-        if st.button("Tạo tài khoản"):
+        if st.button("Tạo tài khoản", type="primary"):
             if not username or not password or not fullname:
                 st.error("Vui lòng điền đầy đủ thông tin!")
                 return
@@ -1394,6 +1394,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
