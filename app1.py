@@ -1062,37 +1062,36 @@ def import_data(conn):
     # ==========================
     if option == "Học kỳ 1":
         st.info(f"""
-###Định dạng CSV cho **Học kỳ 1**:
+Định dạng CSV cho Học kỳ 1:
 - mssv, student_name, class_name, semester (=1)
-- triet, giai_tich_1, tieng_an_do_1, gdtc, thvp, tvth, phap_luat, logic  
+- triet, giai_tich_1, tieng_an_do_1, gdtc, thvp 
 
-**Lưu ý:**  
-- semester **bắt buộc = 1**  
-- Năm học cố định = {ACADEMIC_YEAR}
+Lưu ý:
+- semester phải = 1  
+- Năm học = {ACADEMIC_YEAR}
 - GDTC không tính vào GPA
         """)
 
     elif option == "Học kỳ 2":
         st.info(f"""
-###Định dạng CSV cho **Học kỳ 2**:
+Định dạng CSV cho Học kỳ 2:
 - mssv, student_name, class_name, semester (=2)
-- giai_tich_2, tieng_an_do_2  
+- giai_tich_2, tieng_an_do_2, tvth, phap_luat, logic 
 
-**Lưu ý:**  
-- semester **bắt buộc = 2**
-- Năm học cố định = {ACADEMIC_YEAR}
+Lưu ý:
+- semester phải = 2
+- Năm học = {ACADEMIC_YEAR}
         """)
 
-    else:   # Cả hai kỳ
+    else:  # Cả hai kỳ
         st.info(f"""
-###Định dạng CSV cho **Cả hai kỳ**:
+Định dạng CSV cho Cả hai kỳ:
 - mssv, student_name, class_name, semester  
-- Các cột bao gồm:  
-  {', '.join(SUBJECTS.keys())}
+- Các cột gồm: {', '.join(SUBJECTS.keys())}
 
-**Lưu ý:**  
-- Trong file phải có cả semester = 1 và semester = 2  
-- Năm học cố định = {ACADEMIC_YEAR}
+Lưu ý:
+- File phải có cả semester = 1 và semester = 2  
+- Năm học = {ACADEMIC_YEAR}
         """)
 
     # ==========================
@@ -1103,7 +1102,7 @@ def import_data(conn):
     if uploaded_file:
         try:
             df = pd.read_csv(uploaded_file)
-            st.write("**Xem trước dữ liệu:**")
+            st.write("Xem trước dữ liệu:")
             st.dataframe(df.head(10))
 
             # ==========================
@@ -1127,11 +1126,9 @@ def import_data(conn):
                 for _, row in df.iterrows():
                     semester = int(row.get("semester", 1)) if not pd.isna(row.get("semester")) else 1
 
-                    # Nếu chọn kỳ 1 nhưng file có kỳ 2 → bỏ qua
+                    # Lọc theo lựa chọn
                     if option == "Học kỳ 1" and semester != 1:
                         continue
-
-                    # Nếu chọn kỳ 2 nhưng file có kỳ 1 → bỏ qua
                     if option == "Học kỳ 2" and semester != 2:
                         continue
 
@@ -1162,7 +1159,7 @@ def import_data(conn):
                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', params)
                         count_inserted += 1
                     except Exception as e:
-                        print("Error inserting row during import:", e)
+                        print("Lỗi khi insert:", e)
 
                 conn.commit()
                 st.success(f"Đã import {count_inserted} bản ghi thành công!")
@@ -1170,6 +1167,7 @@ def import_data(conn):
 
         except Exception as e:
             st.error(f"Lỗi khi đọc file: {e}")
+
 def export_data(df):
     st.title("Export dữ liệu")
     
@@ -1378,5 +1376,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
