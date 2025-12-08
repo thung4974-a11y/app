@@ -1208,7 +1208,7 @@ def manage_users(conn):
     #              TAB 2: THÊM USER
     # ============================================
     with tab_create:
-        st.subheader("Thêm tài khoản mới", type="primary")
+        st.subheader("Thêm tài khoản mới")
 
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
@@ -1394,6 +1394,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
