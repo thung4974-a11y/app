@@ -1047,41 +1047,97 @@ def clean_data_page(conn, df):
 
 def import_data(conn):
     st.title("Import dữ liệu")
-    
-    st.info(f"""
-    **Định dạng file CSV cần có các cột:**
-    - mssv, student_name, class_name, semester
-    - {', '.join(SUBJECTS.keys())}
-    
-    **Lưu ý:** 
-    - Học kỳ (semester) = 1 hoặc 2
-    - Năm học cố định = {ACADEMIC_YEAR}
-    - GDTC không tính vào GPA
-    """)
-    
+
+    # ==========================
+    #   CHỌN LOẠI DỮ LIỆU IMPORT
+    # ==========================
+    option = st.radio(
+        "Chọn loại dữ liệu cần nhập:",
+        ["Học kỳ 1", "Học kỳ 2", "Cả hai kỳ"],
+        horizontal=True
+    )
+
+    # ==========================
+    #     MÔ TẢ TƯƠNG ỨNG
+    # ==========================
+    if option == "Học kỳ 1":
+        st.info(f"""
+###Định dạng CSV cho **Học kỳ 1**:
+- mssv, student_name, class_name, semester (=1)
+- triet, giai_tich_1, tieng_an_do_1, gdtc, thvp, tvth, phap_luat, logic  
+
+**Lưu ý:**  
+- semester **bắt buộc = 1**  
+- Năm học cố định = {ACADEMIC_YEAR}
+- GDTC không tính vào GPA
+        """)
+
+    elif option == "Học kỳ 2":
+        st.info(f"""
+###Định dạng CSV cho **Học kỳ 2**:
+- mssv, student_name, class_name, semester (=2)
+- giai_tich_2, tieng_an_do_2  
+
+**Lưu ý:**  
+- semester **bắt buộc = 2**
+- Năm học cố định = {ACADEMIC_YEAR}
+        """)
+
+    else:   # Cả hai kỳ
+        st.info(f"""
+###Định dạng CSV cho **Cả hai kỳ**:
+- mssv, student_name, class_name, semester  
+- Các cột bao gồm:  
+  {', '.join(SUBJECTS.keys())}
+
+**Lưu ý:**  
+- Trong file phải có cả semester = 1 và semester = 2  
+- Năm học cố định = {ACADEMIC_YEAR}
+        """)
+
+    # ==========================
+    #       UPLOAD FILE
+    # ==========================
     uploaded_file = st.file_uploader("Chọn file CSV", type=['csv'])
-    
+
     if uploaded_file:
         try:
             df = pd.read_csv(uploaded_file)
             st.write("**Xem trước dữ liệu:**")
             st.dataframe(df.head(10))
-            
+
+            # ==========================
+            #       IMPORT BUTTON
+            # ==========================
             if st.button("Import vào database"):
                 c = conn.cursor()
-                
+
+                # Chuyển đổi dữ liệu
                 for key in SUBJECTS.keys():
                     if key in df.columns:
                         df[key] = pd.to_numeric(df[key], errors='coerce')
                     else:
                         df[key] = np.nan
-                
+
                 count_inserted = 0
+
+                # ==========================
+                #       IMPORT LOGIC
+                # ==========================
                 for _, row in df.iterrows():
+                    semester = int(row.get("semester", 1)) if not pd.isna(row.get("semester")) else 1
+
+                    # Nếu chọn kỳ 1 nhưng file có kỳ 2 → bỏ qua
+                    if option == "Học kỳ 1" and semester != 1:
+                        continue
+
+                    # Nếu chọn kỳ 2 nhưng file có kỳ 1 → bỏ qua
+                    if option == "Học kỳ 2" and semester != 2:
+                        continue
+
                     diem_tb = calculate_average(row)
                     xep_loai = calculate_grade(diem_tb)
-                    semester = int(row.get('semester', 1)) if not pd.isna(row.get('semester', 1)) else 1
-                    
+
                     params = (
                         row.get('mssv', ''), row.get('student_name', ''), row.get('class_name', ''),
                         semester,
@@ -1097,6 +1153,7 @@ def import_data(conn):
                         None if pd.isna(row.get('logic')) else float(row.get('logic')),
                         float(diem_tb), xep_loai, int(ACADEMIC_YEAR)
                     )
+
                     try:
                         c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
                                      triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2,
@@ -1106,12 +1163,13 @@ def import_data(conn):
                         count_inserted += 1
                     except Exception as e:
                         print("Error inserting row during import:", e)
+
                 conn.commit()
-                st.success(f"Đã import ~{count_inserted} bản ghi!")
+                st.success(f"Đã import {count_inserted} bản ghi thành công!")
                 st.rerun()
+
         except Exception as e:
             st.error(f"Lỗi khi đọc file: {e}")
-
 def export_data(df):
     st.title("Export dữ liệu")
     
@@ -1320,4 +1378,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
