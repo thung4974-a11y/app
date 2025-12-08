@@ -1181,34 +1181,31 @@ def export_data(df):
 def manage_users(conn):
     st.title("Quản lý tài khoản")
 
-    # ==========================
-    #       TABS
-    # ==========================
     tab_list, tab_create = st.tabs(["Danh sách", "Thêm mới"])
 
     # ============================================
-    #                 TAB 1: DANH SÁCH USER
+    #              TAB 1: DANH SÁCH USER
     # ============================================
     with tab_list:
         users_df = get_all_users(conn)
         st.dataframe(users_df, use_container_width=True)
 
-        # Nếu có user để xóa ngoài admin
-        deletable_users = users_df[users_df["username"] != "admin"]
+        deletable = users_df[users_df["username"] != "admin"]
 
-        if not deletable_users.empty:
+        if not deletable.empty:
             user_id = st.selectbox(
                 "Chọn user để xóa",
-                deletable_users["id"].tolist()
+                deletable["id"].tolist()
             )
 
             if st.button("Xóa user"):
-                delete_user(conn, user_id)
-                st.success("Đã xóa!")
+                with st.spinner("Đang xóa tài khoản..."):
+                    delete_user(conn, user_id)
+                st.success("Đã xóa tài khoản!")
                 st.rerun()
 
     # ============================================
-    #                 TAB 2: THÊM USER
+    #              TAB 2: THÊM USER
     # ============================================
     with tab_create:
         st.subheader("Thêm tài khoản mới")
@@ -1218,20 +1215,18 @@ def manage_users(conn):
         fullname = st.text_input("Họ tên")
         role = st.selectbox("Vai trò", ["student", "teacher"])
 
-        student_id = None
-        if role == "student":
-            student_id = st.text_input("MSSV")
+        student_id = st.text_input("MSSV") if role == "student" else None
 
         if st.button("Tạo tài khoản"):
-            # Kiểm tra thông tin nhập
             if not username or not password or not fullname:
-                st.error("Vui lòng điền đầy đủ thông tin.")
+                st.error("Vui lòng điền đầy đủ thông tin!")
                 return
 
-            success = create_user(conn, username, password, fullname, role, student_id)
+            with st.spinner("Đang tạo tài khoản..."):
+                created = create_user(conn, username, password, fullname, role, student_id)
 
-            if success:
-                st.success("Đã tạo tài khoản!")
+            if created:
+                st.success("Tạo tài khoản thành công!")
                 st.rerun()
             else:
                 st.error("Username đã tồn tại!")
@@ -1399,6 +1394,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
