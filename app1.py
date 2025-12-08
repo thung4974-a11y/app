@@ -929,7 +929,7 @@ def manage_grades_new(conn, df):
                 st.error(f"Bạn đã chọn {len(multi_delete_ids)} bản ghi để xóa!")
                 confirm_multi = st.checkbox("Tôi xác nhận muốn xóa TẤT CẢ các bản ghi đã chọn", key="confirm_multi_delete")
                 
-                if st.button("Xóa tất cả đã chọn", disabled=not confirm_multi):
+                if st.button("Xóa tất cả đã chọn", type="primary", disabled=not confirm_multi):
                     delete_grades_batch(conn, multi_delete_ids)
                     st.success(f"Đã xóa {len(multi_delete_ids)} bản ghi!")
                     st.rerun()
@@ -1198,7 +1198,7 @@ def manage_users(conn):
                 deletable["id"].tolist()
             )
 
-            if st.button("Xóa user"):
+            if st.button("Xóa user",type="primary"):
                 with st.spinner("Đang xóa tài khoản..."):
                     delete_user(conn, user_id)
                 st.success("Đã xóa tài khoản!")
@@ -1208,7 +1208,7 @@ def manage_users(conn):
     #              TAB 2: THÊM USER
     # ============================================
     with tab_create:
-        st.subheader("Thêm tài khoản mới")
+        st.subheader("Thêm tài khoản mới", type="primary")
 
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
@@ -1394,6 +1394,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
