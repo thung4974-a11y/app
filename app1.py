@@ -782,7 +782,7 @@ def manage_grades_new(conn, df):
             st.dataframe(display_search, use_container_width=True, hide_index=True)
             
             # Chức năng SỬA ĐIỂM
-            st.subheader("✏️ Sửa điểm sinh viên")
+            st.subheader("Sửa điểm sinh viên")
             
             # Lấy danh sách MSSV duy nhất từ kết quả tìm kiếm
             unique_students = search_results['mssv'].unique().tolist()
@@ -891,7 +891,7 @@ def manage_grades_new(conn, df):
     # Chức năng XÓA ĐIỂM (luôn hiển thị)
     if show_delete:
         st.divider()
-        st.subheader("🗑️ Xóa điểm sinh viên")
+        st.subheader(" Xóa điểm sinh viên")
         
         # Tạo danh sách options để xóa
         delete_options = []
@@ -1320,3 +1320,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
