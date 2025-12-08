@@ -1064,10 +1064,11 @@ def import_data(conn):
         st.info(f"""
 Định dạng CSV cho Học kỳ 1:
 - mssv, student_name, class_name, semester (=1)
-- triet, giai_tich_1, tieng_an_do_1, gdtc, thvp 
+- triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2, gdtc, thvp, tvth, phap_luat, logic
 
 Lưu ý:
-- semester phải = 1  
+- Các môn triet, giai_tich_1, tieng_an_do_1, gdtc, thvp có điểm. Các môn còn lại để trống
+- semester phải = 1
 - Năm học = {ACADEMIC_YEAR}
 - GDTC không tính vào GPA
         """)
@@ -1076,9 +1077,10 @@ Lưu ý:
         st.info(f"""
 Định dạng CSV cho Học kỳ 2:
 - mssv, student_name, class_name, semester (=2)
-- giai_tich_2, tieng_an_do_2, tvth, phap_luat, logic 
+- triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2, gdtc, thvp, tvth, phap_luat, logic
 
 Lưu ý:
+- Các môn giai_tich_2, tieng_an_do_2, tvth, phap_luat, logicbcó điểm. Các môn còn lại để trống
 - semester phải = 2
 - Năm học = {ACADEMIC_YEAR}
         """)
@@ -1394,6 +1396,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
