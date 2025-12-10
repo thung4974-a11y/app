@@ -324,10 +324,12 @@ def clean_data(conn):
     df_clean = df.drop_duplicates(subset=['mssv', 'semester'], keep='first')
     removed_semester = original_count - len(df_clean)
 
-    # ❗ Thêm bước xóa MSSV + tên
-    before_name = len(df_clean)
-    df_clean = df_clean.drop_duplicates(subset=['mssv', 'student_name'], keep='first')
-    removed_name = before_name - len(df_clean)
+    # ❗ Lọc MSSV trùng nhưng tên khác
+    before = len(df_clean)
+    df_clean = (
+        df_clean.sort_values(["mssv", "student_name"])
+                .groupby("mssv", as_index=False)
+                .first()
     
     # Ghi lại DB
     try:
@@ -366,7 +368,7 @@ def clean_data(conn):
         conn.rollback()
         raise
     
-    return removed_semester, removed_name, negative_fixed
+return removed_semester, removed_name_conflict, negative_fixed
 
 # ======================== QUẢN LÝ USER ========================
 def create_user(conn, username, password, fullname, role, student_id=None):
@@ -1051,7 +1053,7 @@ def clean_data_page(conn, df):
     st.subheader("Thực hiện làm sạch")
     st.write("Quá trình này sẽ:")
     st.write("- Xóa các bản ghi trùng **MSSV + Học kỳ** (giữ bản ghi đầu tiên)")
-    st.write("- Xóa các bản ghi trùng **MSSV + Tên** (giữ bản ghi đầu tiên)")
+    st.write("- Xóa các bản ghi trùng **MSSV + Khác Tên** (giữ bản ghi đầu tiên)")
     st.write("- Xóa các điểm có giá trị âm")
     st.write("- Tính lại điểm TB và xếp loại")
     
@@ -1420,6 +1422,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
