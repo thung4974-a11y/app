@@ -1094,13 +1094,13 @@ def import_data(conn):
     #     MÔ TẢ TƯƠNG ỨNG
     # ==========================
     if option == "Thêm sinh viên tuyển sinh":
-        st.info("""
-Định dạng CSV cho Thêm Sinh Viên (Không có điểm):
-- mssv, student_name, class_name, semester
-- Tất cả điểm để trống
-- semester = 1 hoặc 2
-- GPA và Xếp loại sẽ được set = NULL và 'Chưa có điểm'
-        """)
+#         st.info("""
+# Định dạng CSV cho Thêm Sinh Viên (Không có điểm):
+# - mssv, student_name, class_name, semester
+# - Tất cả điểm để trống
+# - semester = 1 hoặc 2
+# - GPA và Xếp loại sẽ được set = NULL và 'Chưa có điểm'
+#         """)
 
     elif option == "Học kỳ 1":
         st.info(f"""
@@ -1453,6 +1453,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
