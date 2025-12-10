@@ -1080,8 +1080,18 @@ Lưu ý:
 - triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2, gdtc, thvp, tvth, phap_luat, logic
 
 Lưu ý:
-- Các môn giai_tich_2, tieng_an_do_2, tvth, phap_luat, logicbcó điểm. Các môn còn lại để trống
+- Các môn giai_tich_2, tieng_an_do_2, tvth, phap_luat, logic có điểm. Các môn còn lại để trống
 - semester phải = 2
+- Năm học = {ACADEMIC_YEAR}
+        """)
+    else:
+         st.info(f"""
+Định dạng CSV cho cả hai Học Kỳ:
+- mssv, student_name, class_name, semester
+- triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2, gdtc, thvp, tvth, phap_luat, logic
+
+Lưu ý:
+- Điểm từng kì của sinh viên sẽ được viết riêng thành 1 dòng, theo lưu ý của từng học kỳ
 - Năm học = {ACADEMIC_YEAR}
         """)
     # ==========================
@@ -1384,6 +1394,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
