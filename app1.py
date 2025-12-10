@@ -1086,47 +1086,44 @@ def import_data(conn):
     # ==========================
     option = st.radio(
         "Chọn loại dữ liệu cần nhập:",
-        ["Học kỳ 1", "Học kỳ 2", "Cả hai kỳ"],
+        ["Thêm sinh viên", "Học kỳ 1", "Học kỳ 2", "Cả hai kỳ"],
         horizontal=True
     )
 
     # ==========================
     #     MÔ TẢ TƯƠNG ỨNG
     # ==========================
-    if option == "Học kỳ 1":
+    if option == "Thêm sinh viên tuyển sinh":
+        st.info("""
+Định dạng CSV cho Thêm Sinh Viên (Không có điểm):
+- mssv, student_name, class_name, semester
+- Tất cả điểm để trống
+- semester = 1 hoặc 2 đều được
+- GPA và Xếp loại sẽ được set = NULL và 'Chưa có điểm'
+        """)
+
+    elif option == "Học kỳ 1":
         st.info(f"""
 Định dạng CSV cho Học kỳ 1:
 - mssv, student_name, class_name, semester (=1)
-- triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2, gdtc, thvp, tvth, phap_luat, logic
-
-Lưu ý:
-- Các môn triet, giai_tich_1, tieng_an_do_1, gdtc, thvp có điểm. Các môn còn lại để trống
-- semester phải = 1
-- Năm học = {ACADEMIC_YEAR}
-- GDTC không tính vào GPA
+- triet, giai_tich_1, tieng_an_do_1, gdtc, thvp
+- Các môn khác để trống
         """)
 
     elif option == "Học kỳ 2":
         st.info(f"""
 Định dạng CSV cho Học kỳ 2:
 - mssv, student_name, class_name, semester (=2)
-- triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2, gdtc, thvp, tvth, phap_luat, logic
-
-Lưu ý:
-- Các môn giai_tich_2, tieng_an_do_2, tvth, phap_luat, logic có điểm. Các môn còn lại để trống
-- semester phải = 2
-- Năm học = {ACADEMIC_YEAR}
+- giai_tich_2, tieng_an_do_2, tvth, phap_luat, logic
+- Các môn khác để trống
         """)
     else:
-         st.info(f"""
-Định dạng CSV cho cả hai Học Kỳ:
+        st.info("""
+CSV cho cả hai kỳ:
 - mssv, student_name, class_name, semester
-- triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2, gdtc, thvp, tvth, phap_luat, logic
-
-Lưu ý:
-- Điểm từng kì của sinh viên sẽ được viết riêng thành 1 dòng, theo lưu ý của từng học kỳ
-- Năm học = {ACADEMIC_YEAR}
+- Điểm theo từng kỳ được lưu mỗi dòng
         """)
+
     # ==========================
     #       UPLOAD FILE
     # ==========================
@@ -1144,12 +1141,12 @@ Lưu ý:
             if st.button("Import vào database"):
                 c = conn.cursor()
 
-                # Chuyển đổi dữ liệu
+                # Đảm bảo tất cả môn đều tồn tại
                 for key in SUBJECTS.keys():
-                    if key in df.columns:
-                        df[key] = pd.to_numeric(df[key], errors='coerce')
-                    else:
+                    if key not in df.columns:
                         df[key] = np.nan
+                    else:
+                        df[key] = pd.to_numeric(df[key], errors='coerce')
 
                 count_inserted = 0
 
@@ -1157,9 +1154,35 @@ Lưu ý:
                 #       IMPORT LOGIC
                 # ==========================
                 for _, row in df.iterrows():
-                    semester = int(row.get("semester", 1)) if not pd.isna(row.get("semester")) else 1
 
-                    # Lọc theo lựa chọn
+                    # --- Xử lý thêm sinh viên ---
+                    if option == "Thêm sinh viên":
+                        semester = int(row.get("semester", 1))
+                        params = (
+                            row.get('mssv', ''),
+                            row.get('student_name', ''),
+                            row.get('class_name', ''),
+                            semester,
+                            None, None, None, None, None,  # 10 môn học
+                            None, None, None, None, None,
+                            None,        # GPA
+                            "Chưa có điểm",
+                            int(ACADEMIC_YEAR)
+                        )
+                        try:
+                            c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
+                                         triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2,
+                                         gdtc, thvp, tvth, phap_luat, logic,
+                                         diem_tb, xep_loai, academic_year)
+                                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', params)
+                            count_inserted += 1
+                        except Exception as e:
+                            print("Lỗi insert SV:", e)
+                        continue
+
+                    # --- Import theo học kỳ ---
+                    semester = int(row.get("semester", 1))
+
                     if option == "Học kỳ 1" and semester != 1:
                         continue
                     if option == "Học kỳ 2" and semester != 2:
@@ -1171,17 +1194,19 @@ Lưu ý:
                     params = (
                         row.get('mssv', ''), row.get('student_name', ''), row.get('class_name', ''),
                         semester,
-                        None if pd.isna(row.get('triet')) else float(row.get('triet')),
-                        None if pd.isna(row.get('giai_tich_1')) else float(row.get('giai_tich_1')),
-                        None if pd.isna(row.get('giai_tich_2')) else float(row.get('giai_tich_2')),
-                        None if pd.isna(row.get('tieng_an_do_1')) else float(row.get('tieng_an_do_1')),
-                        None if pd.isna(row.get('tieng_an_do_2')) else float(row.get('tieng_an_do_2')),
-                        None if pd.isna(row.get('gdtc')) else float(row.get('gdtc')),
-                        None if pd.isna(row.get('thvp')) else float(row.get('thvp')),
-                        None if pd.isna(row.get('tvth')) else float(row.get('tvth')),
-                        None if pd.isna(row.get('phap_luat')) else float(row.get('phap_luat')),
-                        None if pd.isna(row.get('logic')) else float(row.get('logic')),
-                        float(diem_tb), xep_loai, int(ACADEMIC_YEAR)
+                        None if pd.isna(row['triet']) else float(row['triet']),
+                        None if pd.isna(row['giai_tich_1']) else float(row['giai_tich_1']),
+                        None if pd.isna(row['giai_tich_2']) else float(row['giai_tich_2']),
+                        None if pd.isna(row['tieng_an_do_1']) else float(row['tieng_an_do_1']),
+                        None if pd.isna(row['tieng_an_do_2']) else float(row['tieng_an_do_2']),
+                        None if pd.isna(row['gdtc']) else float(row['gdtc']),
+                        None if pd.isna(row['thvp']) else float(row['thvp']),
+                        None if pd.isna(row['tvth']) else float(row['tvth']),
+                        None if pd.isna(row['phap_luat']) else float(row['phap_luat']),
+                        None if pd.isna(row['logic']) else float(row['logic']),
+                        float(diem_tb),
+                        xep_loai,
+                        int(ACADEMIC_YEAR)
                     )
 
                     try:
@@ -1200,6 +1225,7 @@ Lưu ý:
 
         except Exception as e:
             st.error(f"Lỗi khi đọc file: {e}")
+
 
 def export_data(df):
     st.title("Export dữ liệu")
@@ -1427,6 +1453,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
