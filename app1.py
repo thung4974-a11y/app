@@ -324,12 +324,14 @@ def clean_data(conn):
     df_clean = df.drop_duplicates(subset=['mssv', 'semester'], keep='first')
     removed_semester = original_count - len(df_clean)
 
-    # ❗ Lọc MSSV trùng nhưng tên khác
+    # Lọc MSSV trùng nhưng tên khác
     before = len(df_clean)
     df_clean = (
         df_clean.sort_values(["mssv", "student_name"])
                 .groupby("mssv", as_index=False)
                 .first()
+    )
+    removed_name_conflict = before - len(df_clean)
     
     # Ghi lại DB
     try:
@@ -368,7 +370,7 @@ def clean_data(conn):
         conn.rollback()
         raise
     
-return removed_semester, removed_name_conflict, negative_fixed
+    return removed_semester, removed_name_conflict, negative_fixed
 
 # ======================== QUẢN LÝ USER ========================
 def create_user(conn, username, password, fullname, role, student_id=None):
@@ -1020,11 +1022,14 @@ def clean_data_page(conn, df):
     
     st.subheader("Phân tích dữ liệu hiện tại")
     
-    # Trùng MSSV + học kỳ
+    # Đếm trùng MSSV + học kỳ
     duplicate_semester = int(df.duplicated(subset=['mssv', 'semester'], keep='first').sum()) if not df.empty else 0
     
-    # Trùng MSSV + tên
-    duplicate_name = int(df.duplicated(subset=['mssv', 'student_name'], keep='first').sum()) if not df.empty else 0
+    # Đếm MSSV trùng nhưng TÊN KHÁC nhau
+    duplicate_name = 0
+    if not df.empty:
+        name_conflict_groups = df.groupby("mssv")["student_name"].nunique()
+        duplicate_name = int((name_conflict_groups > 1).sum())   # số MSSV có nhiều tên
     
     # Điểm âm
     negative_count = 0
@@ -1037,7 +1042,7 @@ def clean_data_page(conn, df):
         if duplicate_semester > 0 or duplicate_name > 0:
             st.error(
                 f"- {duplicate_semester} bản ghi trùng **MSSV + Học kỳ**\n"
-                f"- {duplicate_name} bản ghi trùng **MSSV + Tên**"
+                f"- {duplicate_name} MSSV có **nhiều tên khác nhau**"
             )
         else:
             st.success("Không có bản ghi trùng lặp")
@@ -1053,7 +1058,7 @@ def clean_data_page(conn, df):
     st.subheader("Thực hiện làm sạch")
     st.write("Quá trình này sẽ:")
     st.write("- Xóa các bản ghi trùng **MSSV + Học kỳ** (giữ bản ghi đầu tiên)")
-    st.write("- Xóa các bản ghi trùng **MSSV + Khác Tên** (giữ bản ghi đầu tiên)")
+    st.write("- Xóa các bản ghi **MSSV có nhiều tên**, giữ tên xuất hiện nhiều nhất")
     st.write("- Xóa các điểm có giá trị âm")
     st.write("- Tính lại điểm TB và xếp loại")
     
@@ -1066,7 +1071,7 @@ def clean_data_page(conn, df):
             st.success(
                 f"Hoàn thành!\n"
                 f"- Xóa {duplicates_removed} bản ghi trùng MSSV + học kỳ\n"
-                f"- Xóa {name_removed} bản ghi trùng MSSV + tên\n"
+                f"- Xóa {name_removed} bản ghi do **MSSV có nhiều tên**\n"
                 f"- Sửa {negatives_fixed} điểm âm."
             )
             st.rerun()
@@ -1422,6 +1427,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
