@@ -304,35 +304,44 @@ def clean_data(conn):
     c = conn.cursor()
     
     original_count = len(df)
-    
     if original_count == 0:
-        return 0, 0
+        return 0, 0, 0
     
+    # Chuyển về numeric
     for key in SUBJECTS.keys():
         if key in df.columns:
             df[key] = pd.to_numeric(df[key], errors='coerce')
     
+    # Xử lý điểm âm → NaN
     negative_fixed = 0
     for key in SUBJECTS.keys():
         if key in df.columns:
-            negative_count = int((df[key] < 0).sum())
-            negative_fixed += negative_count
+            count = int((df[key] < 0).sum())
+            negative_fixed += count
             df.loc[df[key] < 0, key] = np.nan
     
+    # Xóa MSSV + học kỳ
     df_clean = df.drop_duplicates(subset=['mssv', 'semester'], keep='first')
-    duplicates_removed = original_count - len(df_clean)
+    removed_semester = original_count - len(df_clean)
+
+    # ❗ Thêm bước xóa MSSV + tên
+    before_name = len(df_clean)
+    df_clean = df_clean.drop_duplicates(subset=['mssv', 'student_name'], keep='first')
+    removed_name = before_name - len(df_clean)
     
+    # Ghi lại DB
     try:
         c.execute("DELETE FROM grades")
-        inserted = 0
         for _, row in df_clean.iterrows():
             diem_tb = calculate_average(row)
             xep_loai = calculate_grade(diem_tb)
+
             def safe_val(k):
                 v = row.get(k)
                 if pd.isna(v):
                     return None
                 return float(v) if v != '' else None
+
             params = (
                 row.get('mssv', ''), row.get('student_name', ''), row.get('class_name', None),
                 int(row.get('semester', 1)) if not pd.isna(row.get('semester', 1)) else 1,
@@ -342,21 +351,22 @@ def clean_data(conn):
                 safe_val('phap_luat'), safe_val('logic'),
                 float(diem_tb), xep_loai, int(ACADEMIC_YEAR)
             )
-            try:
-                c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
-                             triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2,
-                             gdtc, thvp, tvth, phap_luat, logic,
-                             diem_tb, xep_loai, academic_year)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', params)
-                inserted += 1
-            except Exception as e:
-                print("Error inserting row during clean_data:", e)
+
+            c.execute(
+                '''INSERT INTO grades (mssv, student_name, class_name, semester,
+                triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2,
+                gdtc, thvp, tvth, phap_luat, logic,
+                diem_tb, xep_loai, academic_year)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                params
+            )
+
         conn.commit()
-    except Exception as e:
+    except Exception:
         conn.rollback()
         raise
     
-    return duplicates_removed, negative_fixed
+    return removed_semester, removed_name, negative_fixed
 
 # ======================== QUẢN LÝ USER ========================
 def create_user(conn, username, password, fullname, role, student_id=None):
@@ -1008,8 +1018,13 @@ def clean_data_page(conn, df):
     
     st.subheader("Phân tích dữ liệu hiện tại")
     
-    duplicate_count = int(df.duplicated(subset=['mssv', 'semester'], keep='first').sum()) if not df.empty else 0
+    # Trùng MSSV + học kỳ
+    duplicate_semester = int(df.duplicated(subset=['mssv', 'semester'], keep='first').sum()) if not df.empty else 0
     
+    # Trùng MSSV + tên
+    duplicate_name = int(df.duplicated(subset=['mssv', 'student_name'], keep='first').sum()) if not df.empty else 0
+    
+    # Điểm âm
     negative_count = 0
     for key in SUBJECTS.keys():
         if key in df.columns:
@@ -1017,8 +1032,11 @@ def clean_data_page(conn, df):
     
     col1, col2 = st.columns(2)
     with col1:
-        if duplicate_count > 0:
-            st.error(f"Có **{duplicate_count}** bản ghi trùng MSSV + Học kỳ")
+        if duplicate_semester > 0 or duplicate_name > 0:
+            st.error(
+                f"- {duplicate_semester} bản ghi trùng **MSSV + Học kỳ**\n"
+                f"- {duplicate_name} bản ghi trùng **MSSV + Tên**"
+            )
         else:
             st.success("Không có bản ghi trùng lặp")
     
@@ -1032,15 +1050,23 @@ def clean_data_page(conn, df):
     
     st.subheader("Thực hiện làm sạch")
     st.write("Quá trình này sẽ:")
-    st.write("- Xóa các bản ghi trùng MSSV + Học kỳ (giữ bản ghi đầu tiên)")
+    st.write("- Xóa các bản ghi trùng **MSSV + Học kỳ** (giữ bản ghi đầu tiên)")
+    st.write("- Xóa các bản ghi trùng **MSSV + Tên** (giữ bản ghi đầu tiên)")
     st.write("- Xóa các điểm có giá trị âm")
     st.write("- Tính lại điểm TB và xếp loại")
     
-    if st.button("Làm sạch dữ liệu", type="primary", 
-                disabled=(duplicate_count == 0 and negative_count == 0)):
+    if st.button(
+        "Làm sạch dữ liệu", type="primary", 
+        disabled=(duplicate_semester == 0 and duplicate_name == 0 and negative_count == 0)
+    ):
         try:
-            duplicates_removed, negatives_fixed = clean_data(conn)
-            st.success(f"Hoàn thành! Đã xóa {duplicates_removed} bản ghi trùng và sửa {negatives_fixed} điểm âm.")
+            duplicates_removed, name_removed, negatives_fixed = clean_data(conn)
+            st.success(
+                f"Hoàn thành!\n"
+                f"- Xóa {duplicates_removed} bản ghi trùng MSSV + học kỳ\n"
+                f"- Xóa {name_removed} bản ghi trùng MSSV + tên\n"
+                f"- Sửa {negatives_fixed} điểm âm."
+            )
             st.rerun()
         except Exception as e:
             st.error(f"Lỗi khi làm sạch: {e}")
@@ -1394,6 +1420,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
