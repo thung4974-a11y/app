@@ -1084,18 +1084,6 @@ Lưu ý:
 - semester phải = 2
 - Năm học = {ACADEMIC_YEAR}
         """)
-
-    else:  # Cả hai kỳ
-        st.info(f"""
-Định dạng CSV cho Cả hai kỳ:
-- mssv, student_name, class_name, semester  
-- Các cột gồm: {', '.join(SUBJECTS.keys())}
-
-Lưu ý:
-- File phải có cả semester = 1 và semester = 2  
-- Năm học = {ACADEMIC_YEAR}
-        """)
-
     # ==========================
     #       UPLOAD FILE
     # ==========================
@@ -1396,6 +1384,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
