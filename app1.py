@@ -1098,7 +1098,7 @@ def import_data(conn):
 Định dạng CSV cho Thêm Sinh Viên (Không có điểm):
 - mssv, student_name, class_name, semester
 - Tất cả điểm để trống
-- semester = 1 hoặc 2 đều được
+- semester = 1 hoặc 2
 - GPA và Xếp loại sẽ được set = NULL và 'Chưa có điểm'
         """)
 
@@ -1121,7 +1121,7 @@ def import_data(conn):
         st.info("""
 CSV cho cả hai kỳ:
 - mssv, student_name, class_name, semester
-- Điểm theo từng kỳ được lưu mỗi dòng
+- Điểm theo từng kỳ được lưu 2 dòng khác nhau
         """)
 
     # ==========================
@@ -1453,6 +1453,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
