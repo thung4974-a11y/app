@@ -1086,7 +1086,7 @@ def import_data(conn):
     # ==========================
     option = st.radio(
         "Chọn loại dữ liệu cần nhập:",
-        ["Thêm sinh viên", "Học kỳ 1", "Học kỳ 2", "Cả hai kỳ"],
+        ["Thêm sinh viên tuyển sinh", "Học kỳ 1", "Học kỳ 2", "Cả hai kỳ"],
         horizontal=True
     )
 
@@ -1453,6 +1453,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
