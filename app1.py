@@ -520,7 +520,7 @@ def teacher_dashboard(conn):
     st.sidebar.title(f"{st.session_state.get('fullname','')}")
     st.sidebar.write("Vai trò: **Giáo viên**")
     
-    if st.sidebar.button("Đăng xuất"):
+    if st.sidebar.button("Đăng xuất", type = "primary"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
@@ -1396,6 +1396,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
