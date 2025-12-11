@@ -1093,16 +1093,7 @@ def import_data(conn):
     # ==========================
     #     MÔ TẢ TƯƠNG ỨNG
     # ==========================
-    if option == "Thêm sinh viên tuyển sinh":
-        st.info("""
-Định dạng CSV cho Thêm Sinh Viên (Không có điểm):
-- mssv, student_name, class_name, semester
-- Tất cả điểm để trống
-- semester = 1 hoặc 2
-- GPA và Xếp loại sẽ được set = NULL và 'Chưa có điểm'
-        """)
-
-    elif option == "Học kỳ 1":
+    if option == "Học kỳ 1":
         st.info(f"""
 Định dạng CSV cho Học kỳ 1:
 - mssv, student_name, class_name, semester (=1)
@@ -1141,7 +1132,7 @@ CSV cho cả hai kỳ:
             if st.button("Import vào database"):
                 c = conn.cursor()
 
-                # Đảm bảo tất cả môn đều tồn tại
+                # Đảm bảo tất cả môn đều tồn tại trong DataFrame
                 for key in SUBJECTS.keys():
                     if key not in df.columns:
                         df[key] = np.nan
@@ -1155,39 +1146,15 @@ CSV cho cả hai kỳ:
                 # ==========================
                 for _, row in df.iterrows():
 
-                    # --- Xử lý thêm sinh viên ---
-                    if option == "Thêm sinh viên":
-                        semester = int(row.get("semester", 1))
-                        params = (
-                            row.get('mssv', ''),
-                            row.get('student_name', ''),
-                            row.get('class_name', ''),
-                            semester,
-                            None, None, None, None, None,  # 10 môn học
-                            None, None, None, None, None,
-                            None,        # GPA
-                            "Chưa có điểm",
-                            int(ACADEMIC_YEAR)
-                        )
-                        try:
-                            c.execute('''INSERT INTO grades (mssv, student_name, class_name, semester,
-                                         triet, giai_tich_1, giai_tich_2, tieng_an_do_1, tieng_an_do_2,
-                                         gdtc, thvp, tvth, phap_luat, logic,
-                                         diem_tb, xep_loai, academic_year)
-                                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', params)
-                            count_inserted += 1
-                        except Exception as e:
-                            print("Lỗi insert SV:", e)
-                        continue
-
-                    # --- Import theo học kỳ ---
                     semester = int(row.get("semester", 1))
 
+                    # Lọc đúng theo lựa chọn
                     if option == "Học kỳ 1" and semester != 1:
                         continue
                     if option == "Học kỳ 2" and semester != 2:
                         continue
 
+                    # Tính điểm trung bình + xếp loại
                     diem_tb = calculate_average(row)
                     xep_loai = calculate_grade(diem_tb)
 
@@ -1453,6 +1420,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
