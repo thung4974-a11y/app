@@ -928,7 +928,6 @@ def manage_grades_new(conn):
                     
                     st.success("Đã cập nhật điểm thành công!")
                     st.rerun()
-rerun()
         else:
             st.warning("Không tìm thấy sinh viên phù hợp.")
     
@@ -1451,6 +1450,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
