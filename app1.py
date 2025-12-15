@@ -728,181 +728,214 @@ def show_dashboard(df):
         st.plotly_chart(fig, use_container_width=True)
 
 def manage_grades_new(conn):
-    import numpy as np
-    import pandas as pd
-    import streamlit as st
-    from datetime import datetime
-
-    # ===== LOAD DATA TỪ SESSION =====
     if "grades_df" not in st.session_state:
         st.session_state.grades_df = load_grades(conn)
 
     df = st.session_state.grades_df
-
+    """Quản lý điểm - GIAO DIỆN MỚI THEO YÊU CẦU"""
     st.title("Quản lý điểm sinh viên")
-
+    
     if df.empty:
         st.warning("Chưa có dữ liệu điểm.")
         return
-
-    # ===== BỘ LỌC HỌC KỲ =====
+    
+    # Bộ lọc học kỳ
     semester_filter = st.radio(
         "Chọn học kỳ hiển thị",
-        ["Tất cả từng kỳ", "Học kỳ 1", "Học kỳ 2"],
+        ['Tất cả từng kỳ', 'Học kỳ 1', 'Học kỳ 2', 'Tổng hợp'],
         horizontal=True
     )
-
-    if semester_filter == "Học kỳ 1":
-        filtered_df = df[df["semester"] == 1]
-    elif semester_filter == "Học kỳ 2":
-        filtered_df = df[df["semester"] == 2]
+    
+    # Lọc dữ liệu theo học kỳ
+    if semester_filter == 'Học kỳ 1':
+        filtered_df = df[df['semester'] == 1].copy()
+    elif semester_filter == 'Học kỳ 2':
+        filtered_df = df[df['semester'] == 2].copy()
+    elif semester_filter == 'Tổng hợp':
+        # Chỉ lấy sinh viên có cả 2 kỳ
+        grouped = df.groupby('mssv')
+        combined_rows = []
+        for mssv, group in grouped:
+            semesters = group['semester'].unique().tolist()
+            if len(semesters) == 2 and 1 in semesters and 2 in semesters:
+                sem1_row = group[group['semester'] == 1].iloc[0]
+                sem2_row = group[group['semester'] == 2].iloc[0]
+                diem_tb_1 = float(sem1_row['diem_tb']) if pd.notna(sem1_row['diem_tb']) else 0
+                diem_tb_2 = float(sem2_row['diem_tb']) if pd.notna(sem2_row['diem_tb']) else 0
+                diem_tb_combined = round((diem_tb_1 + diem_tb_2) / 2, 2)
+                combined_rows.append({
+                    'mssv': mssv,
+                    'student_name': sem1_row['student_name'],
+                    'class_name': sem1_row['class_name'],
+                    'semester': 'Cả 2 kỳ',
+                    'diem_tb_hk1': diem_tb_1,
+                    'diem_tb_hk2': diem_tb_2,
+                    'diem_tb': diem_tb_combined,
+                    'xep_loai': calculate_grade(diem_tb_combined)
+                })
+        filtered_df = pd.DataFrame(combined_rows) if combined_rows else pd.DataFrame()
     else:
         filtered_df = df.copy()
-
-    # ===== HIỂN THỊ BẢNG =====
-    display_df = filtered_df[
-        ["mssv", "student_name", "class_name", "semester", "diem_tb", "xep_loai"]
-    ].copy()
-
-    display_df.columns = ["MSSV", "Họ tên", "Lớp", "Học kỳ", "Điểm TB", "Xếp loại"]
-
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
-
+    
+    # Hiển thị bảng điểm (không có cột ID)
+    if not filtered_df.empty:
+        if semester_filter == 'Tổng hợp':
+            display_cols = ['mssv', 'student_name', 'class_name', 'diem_tb_hk1', 'diem_tb_hk2', 'diem_tb', 'xep_loai']
+            display_df = filtered_df[display_cols].copy()
+            display_df.columns = ['MSSV', 'Họ tên', 'Lớp', 'ĐTB HK1', 'ĐTB HK2', 'Điểm TB', 'Xếp loại']
+        else:
+            display_cols = ['mssv', 'student_name', 'class_name', 'semester', 'diem_tb', 'xep_loai']
+            display_df = filtered_df[display_cols].copy()
+            display_df.columns = ['MSSV', 'Họ tên', 'Lớp', 'Học kỳ', 'Điểm TB', 'Xếp loại']
+        
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        st.caption(f"Tổng số: {len(display_df)} bản ghi")
+    else:
+        st.info("Không có dữ liệu phù hợp với bộ lọc.")
+    
     st.divider()
-
-    # ===== TÌM KIẾM =====
-    search_term = st.text_input("Tìm sinh viên (MSSV hoặc tên)")
-
-    if not search_term:
-        return
-
-    search_results = df[
-        df["mssv"].str.contains(search_term, case=False, na=False)
-        | df["student_name"].str.contains(search_term, case=False, na=False)
-    ]
-
-    if search_results.empty:
-        st.warning("Không tìm thấy sinh viên.")
-        return
-
-    st.success(f"Tìm thấy {len(search_results)} bản ghi")
-
-    # ===== CHỌN SINH VIÊN =====
-    selected_mssv = st.selectbox(
-        "Chọn sinh viên",
-        search_results["mssv"].unique()
-    )
-
-    student_data = df[df["mssv"] == selected_mssv]
-    student_info = student_data.iloc[0]
-
-    st.info(
-        f"**Sinh viên:** {student_info['student_name']} | "
-        f"**MSSV:** {student_info['mssv']} | "
-        f"**Lớp:** {student_info['class_name']}"
-    )
-
-    # ===== NHẬP ĐIỂM =====
-    col1, col2 = st.columns(2)
-
-    sem1_scores = {}
-    sem2_scores = {}
-
+    
+    # Tìm kiếm và Xóa điểm cùng hàng
+    col1, col2 = st.columns([2, 1])
+    
     with col1:
-        st.subheader("Học kỳ 1")
-        sem1 = student_data[student_data["semester"] == 1]
-
-        if sem1.empty:
-            st.warning("Chưa có HK1")
-        else:
-            row = sem1.iloc[0]
-            for key in SEMESTER_1_SUBJECTS:
-                sem1_scores[key] = st.number_input(
-                    SUBJECTS[key]["name"],
-                    0.0, 10.0,
-                    float(row.get(key, 0) or 0),
-                    key=f"sem1_{key}"
-                )
-
+        search_term = st.text_input("Tìm kiếm sinh viên (MSSV hoặc Tên)", key="manage_search")
+    
     with col2:
-        st.subheader("Học kỳ 2")
-        sem2 = student_data[student_data["semester"] == 2]
+        st.write("")
+        st.write("")
+        show_delete = st.checkbox("Hiển thị chức năng Xóa điểm", value=True)
+    
+    # Kết quả tìm kiếm
+    search_results = pd.DataFrame()
+    if search_term:
+        search_results = df[
+            df['mssv'].astype(str).str.contains(search_term, case=False, na=False) |
+            df['student_name'].str.contains(search_term, case=False, na=False)
+        ]
+        
+        if not search_results.empty:
+            st.success(f"Tìm thấy {len(search_results)} bản ghi")
+            display_search = search_results[['mssv', 'student_name', 'class_name', 'semester', 'diem_tb', 'xep_loai']].copy()
+            display_search.columns = ['MSSV', 'Họ tên', 'Lớp', 'Học kỳ', 'Điểm TB', 'Xếp loại']
+            st.dataframe(display_search, use_container_width=True, hide_index=True)
+            
+            # Chức năng SỬA ĐIỂM
+            st.subheader("Sửa điểm sinh viên")
+            
+            # Lấy danh sách MSSV duy nhất từ kết quả tìm kiếm
+            unique_students = search_results['mssv'].unique().tolist()
+            selected_mssv = st.selectbox("Chọn sinh viên để sửa điểm", unique_students)
+            
+            if selected_mssv:
+                student_data = df[df['mssv'] == selected_mssv]
+                student_name = student_data.iloc[0]['student_name']
+                class_name = student_data.iloc[0]['class_name'] or ''
+                
+                st.info(f"**Sinh viên:** {student_name} | **MSSV:** {selected_mssv} | **Lớp:** {class_name}")
+                
+                # Hiển thị 2 bảng điểm theo từng học kỳ
+                col_hk1, col_hk2 = st.columns(2)
+                
+                with col_hk1:
+                    st.markdown("### Học kỳ 1")
+                    sem1_data = student_data[student_data['semester'] == 1]
+                    
+                    sem1_scores = {}
+                    if not sem1_data.empty:
+                        row = sem1_data.iloc[0]
+                        for key in SEMESTER_1_SUBJECTS:
+                            current_val = row.get(key)
+                            current_val = float(current_val) if pd.notna(current_val) else 0.0
+                            sem1_scores[key] = st.number_input(
+                                SUBJECTS[key]['name'],
+                                0.0, 10.0, current_val,
+                                key=f"edit_sem1_{key}"
+                            )
+                    else:
+                        st.warning("Chưa có điểm HK1")
+                        for key in SEMESTER_1_SUBJECTS:
+                            sem1_scores[key] = st.number_input(
+                                SUBJECTS[key]['name'],
+                                0.0, 10.0, 0.0,
+                                key=f"edit_sem1_{key}",
+                                disabled=True
+                            )
+                
+                with col_hk2:
+                    st.markdown("###Học kỳ 2")
+                    sem2_data = student_data[student_data['semester'] == 2]
+                    
+                    sem2_scores = {}
+                    if not sem2_data.empty:
+                        row = sem2_data.iloc[0]
+                        for key in SEMESTER_2_SUBJECTS:
+                            current_val = row.get(key)
+                            current_val = float(current_val) if pd.notna(current_val) else 0.0
+                            sem2_scores[key] = st.number_input(
+                                SUBJECTS[key]['name'],
+                                0.0, 10.0, current_val,
+                                key=f"edit_sem2_{key}"
+                            )
+                    else:
+                        st.warning("Chưa có điểm HK2 (Sinh viên chưa học)")
+                        for key in SEMESTER_2_SUBJECTS:
+                            sem2_scores[key] = st.number_input(
+                                SUBJECTS[key]['name'],
+                                0.0, 10.0, 0.0,
+                                key=f"edit_sem2_{key}",
+                                disabled=True
+                            )
+                
+                # Nút lưu
+                if st.button("Lưu thay đổi", type="primary"):
+                    c = conn.cursor()
+                    
+                    # Cập nhật HK1 nếu có
+                    if not sem1_data.empty:
+                        sem1_id = sem1_data.iloc[0]['id']
+                        scores_for_avg = {k: v for k, v in sem1_scores.items() if SUBJECTS[k]['counts_gpa'] and v > 0}
+                        new_diem_tb = round(np.mean(list(scores_for_avg.values())), 2) if scores_for_avg else 0.0
+                        new_xep_loai = calculate_grade(new_diem_tb)
+                        
+                        update_query = f"""UPDATE grades SET 
+                            {', '.join([f'{k} = ?' for k in SEMESTER_1_SUBJECTS])},
+                            diem_tb = ?, xep_loai = ?, updated_at = ?
+                            WHERE id = ?"""
+                        values = [float(sem1_scores[k]) if sem1_scores[k] > 0 else None for k in SEMESTER_1_SUBJECTS]
+                        values.extend([new_diem_tb, new_xep_loai, datetime.now(), sem1_id])
+                        c.execute(update_query, values)
+                    
+                    # Cập nhật HK2 nếu có
+                    if not sem2_data.empty:
+                        sem2_id = sem2_data.iloc[0]['id']
+                        scores_for_avg = {k: v for k, v in sem2_scores.items() if SUBJECTS[k]['counts_gpa'] and v > 0}
+                        new_diem_tb = round(np.mean(list(scores_for_avg.values())), 2) if scores_for_avg else 0.0
+                        new_xep_loai = calculate_grade(new_diem_tb)
+                        
+                        update_query = f"""UPDATE grades SET 
+                            {', '.join([f'{k} = ?' for k in SEMESTER_2_SUBJECTS])},
+                            diem_tb = ?, xep_loai = ?, updated_at = ?
+                            WHERE id = ?"""
+                        values = [float(sem1_scores[k]) for k in SEMESTER_1_SUBJECTS]
+                        values.extend([new_diem_tb, new_xep_loai, datetime.now(), sem2_id])
+                        c.execute(update_query, values)
+                    
+                    conn.commit()
 
-        if sem2.empty:
-            st.warning("Chưa có HK2")
-        else:
-            row = sem2.iloc[0]
-            for key in SEMESTER_2_SUBJECTS:
-                sem2_scores[key] = st.number_input(
-                    SUBJECTS[key]["name"],
-                    0.0, 10.0,
-                    float(row.get(key, 0) or 0),
-                    key=f"sem2_{key}"
-                )
-
-    # ===== LƯU THAY ĐỔI =====
-    if st.button("Lưu thay đổi", type="primary"):
-        c = conn.cursor()
-
-        # ---- UPDATE HK1 ----
-        if not sem1.empty:
-            sem1_id = sem1.iloc[0]["id"]
-            scores = [
-                v for k, v in sem1_scores.items()
-                if SUBJECTS[k]["counts_gpa"]
-            ]
-            diem_tb = round(np.mean(scores), 2) if scores else 0.0
-            xep_loai = calculate_grade(diem_tb)
-
-            query = f"""
-                UPDATE grades SET
-                {', '.join([f'{k}=?' for k in SEMESTER_1_SUBJECTS])},
-                diem_tb=?, xep_loai=?, updated_at=?
-                WHERE id=?
-            """
-
-            values = list(sem1_scores.values()) + [
-                diem_tb, xep_loai, datetime.now(), sem1_id
-            ]
-            c.execute(query, values)
-
-        # ---- UPDATE HK2 ----
-        if not sem2.empty:
-            sem2_id = sem2.iloc[0]["id"]
-            scores = [
-                v for k, v in sem2_scores.items()
-                if SUBJECTS[k]["counts_gpa"]
-            ]
-            diem_tb = round(np.mean(scores), 2) if scores else 0.0
-            xep_loai = calculate_grade(diem_tb)
-
-            query = f"""
-                UPDATE grades SET
-                {', '.join([f'{k}=?' for k in SEMESTER_2_SUBJECTS])},
-                diem_tb=?, xep_loai=?, updated_at=?
-                WHERE id=?
-            """
-
-            values = list(sem2_scores.values()) + [
-                diem_tb, xep_loai, datetime.now(), sem2_id
-            ]
-            c.execute(query, values)
-
-        conn.commit()
-
-        # 🔥 LOAD LẠI DATA
-        st.session_state.grades_df = load_grades(conn)
-
-        st.success("Đã cập nhật điểm thành công!")
-        st.rerun()
-
+                    # 🔥 reload dataframe từ DB
+                    st.session_state.grades_df = load_grades(conn)
+                    
+                    st.success("Đã cập nhật điểm thành công!")
+                    st.rerun()
+rerun()
         else:
             st.warning("Không tìm thấy sinh viên phù hợp.")
     
     # Chức năng XÓA ĐIỂM (luôn hiển thị)
     if show_delete:
         st.divider()
-        st.subheader("Xóa điểm sinh viên")
+        st.subheader(" Xóa điểm sinh viên")
         
         # Tạo danh sách options để xóa
         delete_options = []
@@ -1418,6 +1451,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
