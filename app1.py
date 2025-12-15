@@ -838,7 +838,7 @@ def manage_grades_new(conn, df):
                             )
                 
                 with col_hk2:
-                    st.markdown("###Học kỳ 2")
+                    st.markdown("### Học kỳ 2")
                     sem2_data = student_data[student_data['semester'] == 2]
                     
                     sem2_scores = {}
@@ -869,7 +869,9 @@ def manage_grades_new(conn, df):
                     # Cập nhật HK1 nếu có
                     if not sem1_data.empty:
                         sem1_id = sem1_data.iloc[0]['id']
-                        scores_for_avg = {k: v for k, v in sem1_scores.items() if SUBJECTS[k]['counts_gpa'] and v > 0}
+                        
+                        # SỬA LỖI: Tính điểm TB với điều kiện >= 0 thay vì > 0
+                        scores_for_avg = {k: v for k, v in sem1_scores.items() if SUBJECTS[k]['counts_gpa'] and v >= 0}
                         new_diem_tb = round(np.mean(list(scores_for_avg.values())), 2) if scores_for_avg else 0.0
                         new_xep_loai = calculate_grade(new_diem_tb)
                         
@@ -877,14 +879,18 @@ def manage_grades_new(conn, df):
                             {', '.join([f'{k} = ?' for k in SEMESTER_1_SUBJECTS])},
                             diem_tb = ?, xep_loai = ?, updated_at = ?
                             WHERE id = ?"""
-                        values = [float(sem1_scores[k]) if sem1_scores[k] > 0 else None for k in SEMESTER_1_SUBJECTS]
+                        
+                        # SỬA LỖI CHÍNH: Lưu tất cả điểm (kể cả điểm 0)
+                        values = [float(sem1_scores[k]) for k in SEMESTER_1_SUBJECTS]
                         values.extend([new_diem_tb, new_xep_loai, datetime.now(), sem1_id])
                         c.execute(update_query, values)
                     
                     # Cập nhật HK2 nếu có
                     if not sem2_data.empty:
                         sem2_id = sem2_data.iloc[0]['id']
-                        scores_for_avg = {k: v for k, v in sem2_scores.items() if SUBJECTS[k]['counts_gpa'] and v > 0}
+                        
+                        # SỬA LỖI: Tính điểm TB với điều kiện >= 0 thay vì > 0
+                        scores_for_avg = {k: v for k, v in sem2_scores.items() if SUBJECTS[k]['counts_gpa'] and v >= 0}
                         new_diem_tb = round(np.mean(list(scores_for_avg.values())), 2) if scores_for_avg else 0.0
                         new_xep_loai = calculate_grade(new_diem_tb)
                         
@@ -892,7 +898,9 @@ def manage_grades_new(conn, df):
                             {', '.join([f'{k} = ?' for k in SEMESTER_2_SUBJECTS])},
                             diem_tb = ?, xep_loai = ?, updated_at = ?
                             WHERE id = ?"""
-                        values = [float(sem2_scores[k]) if sem2_scores[k] > 0 else None for k in SEMESTER_2_SUBJECTS]
+                        
+                        # SỬA LỖI CHÍNH: Lưu tất cả điểm (kể cả điểm 0)
+                        values = [float(sem2_scores[k]) for k in SEMESTER_2_SUBJECTS]
                         values.extend([new_diem_tb, new_xep_loai, datetime.now(), sem2_id])
                         c.execute(update_query, values)
                     
@@ -905,7 +913,7 @@ def manage_grades_new(conn, df):
     # Chức năng XÓA ĐIỂM (luôn hiển thị)
     if show_delete:
         st.divider()
-        st.subheader(" Xóa điểm sinh viên")
+        st.subheader("Xóa điểm sinh viên")
         
         # Tạo danh sách options để xóa
         delete_options = []
@@ -947,6 +955,7 @@ def manage_grades_new(conn, df):
                     delete_grades_batch(conn, multi_delete_ids)
                     st.success(f"Đã xóa {len(multi_delete_ids)} bản ghi!")
                     st.rerun()
+
 
 def add_grade_form(conn):
     st.title("Thêm điểm sinh viên")
@@ -1420,6 +1429,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
