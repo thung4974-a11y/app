@@ -215,35 +215,14 @@ def can_take_semester_2(conn, mssv):
 def load_grades(conn):
     try:
         df = pd.read_sql_query("SELECT * FROM grades", conn)
-
-        # Ép kiểu điểm từng môn
         for key in SUBJECTS.keys():
             if key in df.columns:
-                df[key] = pd.to_numeric(df[key], errors="coerce")
-
-        # Ép kiểu học kỳ
-        if "semester" in df.columns:
-            df["semester"] = pd.to_numeric(df["semester"], errors="coerce").astype("Int64")
-
-        # Ép kiểu điểm trung bình
-        if "diem_tb" in df.columns:
-            df["diem_tb"] = pd.to_numeric(
-                df["diem_tb"], errors="coerce"
-            ).fillna(0.0)
-
-        # Chuẩn hóa kiểu MSSV (tránh lỗi search)
-        if "mssv" in df.columns:
-            df["mssv"] = df["mssv"].astype(str)
-
+                df[key] = pd.to_numeric(df[key], errors='coerce')
+        if 'diem_tb' in df.columns:
+            df['diem_tb'] = pd.to_numeric(df['diem_tb'], errors='coerce').fillna(0.0)
         return df
-
-    except Exception as e:
-        # DataFrame rỗng nhưng đúng schema
-        cols = (
-            ["id", "mssv", "student_name", "class_name", "semester"]
-            + list(SUBJECTS.keys())
-            + ["diem_tb", "xep_loai", "academic_year", "updated_at"]
-        )
+    except Exception:
+        cols = ['id','mssv','student_name','class_name','semester'] + list(SUBJECTS.keys()) + ['diem_tb','xep_loai','academic_year','updated_at']
         return pd.DataFrame(columns=cols)
 
 def get_ranking_by_semester(df, semester=None):
@@ -577,7 +556,7 @@ def teacher_dashboard(conn):
     if menu == "Dashboard":
         show_dashboard(df)
     elif menu == "Quản lý điểm":
-        manage_grades_new(conn)
+        manage_grades_new(conn, df)
     elif menu == "Xếp hạng theo GPA":
         show_ranking(df)
     elif menu == "Thêm điểm":
@@ -727,11 +706,7 @@ def show_dashboard(df):
                     title='Số lượng theo xếp loại', labels={'x': 'Xếp loại', 'y': 'Số lượng'})
         st.plotly_chart(fig, use_container_width=True)
 
-def manage_grades_new(conn):
-    if "grades_df" not in st.session_state:
-        st.session_state.grades_df = load_grades(conn)
-
-    df = st.session_state.grades_df
+def manage_grades_new(conn, df):
     """Quản lý điểm - GIAO DIỆN MỚI THEO YÊU CẦU"""
     st.title("Quản lý điểm sinh viên")
     
@@ -917,15 +892,11 @@ def manage_grades_new(conn):
                             {', '.join([f'{k} = ?' for k in SEMESTER_2_SUBJECTS])},
                             diem_tb = ?, xep_loai = ?, updated_at = ?
                             WHERE id = ?"""
-                        values = [float(sem1_scores[k]) for k in SEMESTER_1_SUBJECTS]
+                        values = [float(sem2_scores[k]) if sem2_scores[k] > 0 else None for k in SEMESTER_2_SUBJECTS]
                         values.extend([new_diem_tb, new_xep_loai, datetime.now(), sem2_id])
                         c.execute(update_query, values)
                     
                     conn.commit()
-
-                    # 🔥 reload dataframe từ DB
-                    st.session_state.grades_df = load_grades(conn)
-                    
                     st.success("Đã cập nhật điểm thành công!")
                     st.rerun()
         else:
@@ -976,7 +947,6 @@ def manage_grades_new(conn):
                     delete_grades_batch(conn, multi_delete_ids)
                     st.success(f"Đã xóa {len(multi_delete_ids)} bản ghi!")
                     st.rerun()
-
 
 def add_grade_form(conn):
     st.title("Thêm điểm sinh viên")
@@ -1450,31 +1420,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
