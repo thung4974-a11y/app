@@ -795,55 +795,55 @@ def manage_grades_new(conn, df):
             display_search.columns = ['MSSV', 'Họ tên', 'Lớp', 'Học kỳ', 'Điểm TB', 'Xếp loại']
             st.dataframe(display_search, use_container_width=True, hide_index=True)
                 
-                with col_hk1:
-                    st.markdown("### Học kỳ 1")
-                    sem1_data = student_data[student_data['semester'] == 1]
-                    
-                    sem1_scores = {}
-                    if not sem1_data.empty:
-                        row = sem1_data.iloc[0]
-                        for key in SEMESTER_1_SUBJECTS:
-                            current_val = row.get(key)
-                            current_val = float(current_val) if pd.notna(current_val) else 0.0
-                            sem1_scores[key] = st.number_input(
-                                SUBJECTS[key]['name'],
-                                0.0, 10.0, current_val,
-                                key=f"edit_sem1_{key}"
-                            )
-                    else:
-                        st.warning("Chưa có điểm HK1")
-                        for key in SEMESTER_1_SUBJECTS:
-                            sem1_scores[key] = st.number_input(
-                                SUBJECTS[key]['name'],
-                                0.0, 10.0, 0.0,
-                                key=f"edit_sem1_{key}",
-                                disabled=True
-                            )
+            with col_hk1:
+                st.markdown("### Học kỳ 1")
+                sem1_data = student_data[student_data['semester'] == 1]
                 
-                with col_hk2:
-                    st.markdown("### Học kỳ 2")
-                    sem2_data = student_data[student_data['semester'] == 2]
-                    
-                    sem2_scores = {}
-                    if not sem2_data.empty:
-                        row = sem2_data.iloc[0]
-                        for key in SEMESTER_2_SUBJECTS:
-                            current_val = row.get(key)
-                            current_val = float(current_val) if pd.notna(current_val) else 0.0
-                            sem2_scores[key] = st.number_input(
-                                SUBJECTS[key]['name'],
-                                0.0, 10.0, current_val,
-                                key=f"edit_sem2_{key}"
-                            )
-                    else:
-                        st.warning("Chưa có điểm HK2 (Sinh viên chưa học)")
-                        for key in SEMESTER_2_SUBJECTS:
-                            sem2_scores[key] = st.number_input(
-                                SUBJECTS[key]['name'],
-                                0.0, 10.0, 0.0,
-                                key=f"edit_sem2_{key}",
-                                disabled=True
-                            )
+                sem1_scores = {}
+                if not sem1_data.empty:
+                    row = sem1_data.iloc[0]
+                    for key in SEMESTER_1_SUBJECTS:
+                        current_val = row.get(key)
+                        current_val = float(current_val) if pd.notna(current_val) else 0.0
+                        sem1_scores[key] = st.number_input(
+                            SUBJECTS[key]['name'],
+                            0.0, 10.0, current_val,
+                            key=f"edit_sem1_{key}"
+                        )
+                else:
+                    st.warning("Chưa có điểm HK1")
+                    for key in SEMESTER_1_SUBJECTS:
+                        sem1_scores[key] = st.number_input(
+                            SUBJECTS[key]['name'],
+                            0.0, 10.0, 0.0,
+                            key=f"edit_sem1_{key}",
+                            disabled=True
+                        )
+            
+            with col_hk2:
+                st.markdown("### Học kỳ 2")
+                sem2_data = student_data[student_data['semester'] == 2]
+                
+                sem2_scores = {}
+                if not sem2_data.empty:
+                    row = sem2_data.iloc[0]
+                    for key in SEMESTER_2_SUBJECTS:
+                        current_val = row.get(key)
+                        current_val = float(current_val) if pd.notna(current_val) else 0.0
+                        sem2_scores[key] = st.number_input(
+                            SUBJECTS[key]['name'],
+                            0.0, 10.0, current_val,
+                            key=f"edit_sem2_{key}"
+                        )
+                else:
+                    st.warning("Chưa có điểm HK2 (Sinh viên chưa học)")
+                    for key in SEMESTER_2_SUBJECTS:
+                        sem2_scores[key] = st.number_input(
+                            SUBJECTS[key]['name'],
+                            0.0, 10.0, 0.0,
+                            key=f"edit_sem2_{key}",
+                            disabled=True
+                        )
         else:
             st.warning("Không tìm thấy sinh viên phù hợp.")
     
@@ -1366,5 +1366,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
