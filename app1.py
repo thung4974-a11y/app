@@ -794,23 +794,6 @@ def manage_grades_new(conn, df):
             display_search = search_results[['mssv', 'student_name', 'class_name', 'semester', 'diem_tb', 'xep_loai']].copy()
             display_search.columns = ['MSSV', 'Họ tên', 'Lớp', 'Học kỳ', 'Điểm TB', 'Xếp loại']
             st.dataframe(display_search, use_container_width=True, hide_index=True)
-            
-            # Chức năng SỬA ĐIỂM
-            st.subheader("Sửa điểm sinh viên")
-            
-            # Lấy danh sách MSSV duy nhất từ kết quả tìm kiếm
-            unique_students = search_results['mssv'].unique().tolist()
-            selected_mssv = st.selectbox("Chọn sinh viên để sửa điểm", unique_students)
-            
-            if selected_mssv:
-                student_data = df[df['mssv'] == selected_mssv]
-                student_name = student_data.iloc[0]['student_name']
-                class_name = student_data.iloc[0]['class_name'] or ''
-                
-                st.info(f"**Sinh viên:** {student_name} | **MSSV:** {selected_mssv} | **Lớp:** {class_name}")
-                
-                # Hiển thị 2 bảng điểm theo từng học kỳ
-                col_hk1, col_hk2 = st.columns(2)
                 
                 with col_hk1:
                     st.markdown("### Học kỳ 1")
@@ -861,52 +844,6 @@ def manage_grades_new(conn, df):
                                 key=f"edit_sem2_{key}",
                                 disabled=True
                             )
-                
-                # Nút lưu
-                if st.button("Lưu thay đổi", type="primary"):
-                    c = conn.cursor()
-                    
-                    # Cập nhật HK1 nếu có
-                    if not sem1_data.empty:
-                        sem1_id = sem1_data.iloc[0]['id']
-                        
-                        # SỬA LỖI: Tính điểm TB với điều kiện >= 0 thay vì > 0
-                        scores_for_avg = {k: v for k, v in sem1_scores.items() if SUBJECTS[k]['counts_gpa'] and v >= 0}
-                        new_diem_tb = round(np.mean(list(scores_for_avg.values())), 2) if scores_for_avg else 0.0
-                        new_xep_loai = calculate_grade(new_diem_tb)
-                        
-                        update_query = f"""UPDATE grades SET 
-                            {', '.join([f'{k} = ?' for k in SEMESTER_1_SUBJECTS])},
-                            diem_tb = ?, xep_loai = ?, updated_at = ?
-                            WHERE id = ?"""
-                        
-                        # SỬA LỖI CHÍNH: Lưu tất cả điểm (kể cả điểm 0)
-                        values = [float(sem1_scores[k]) for k in SEMESTER_1_SUBJECTS]
-                        values.extend([new_diem_tb, new_xep_loai, datetime.now(), sem1_id])
-                        c.execute(update_query, values)
-                    
-                    # Cập nhật HK2 nếu có
-                    if not sem2_data.empty:
-                        sem2_id = sem2_data.iloc[0]['id']
-                        
-                        # SỬA LỖI: Tính điểm TB với điều kiện >= 0 thay vì > 0
-                        scores_for_avg = {k: v for k, v in sem2_scores.items() if SUBJECTS[k]['counts_gpa'] and v >= 0}
-                        new_diem_tb = round(np.mean(list(scores_for_avg.values())), 2) if scores_for_avg else 0.0
-                        new_xep_loai = calculate_grade(new_diem_tb)
-                        
-                        update_query = f"""UPDATE grades SET 
-                            {', '.join([f'{k} = ?' for k in SEMESTER_2_SUBJECTS])},
-                            diem_tb = ?, xep_loai = ?, updated_at = ?
-                            WHERE id = ?"""
-                        
-                        # SỬA LỖI CHÍNH: Lưu tất cả điểm (kể cả điểm 0)
-                        values = [float(sem2_scores[k]) for k in SEMESTER_2_SUBJECTS]
-                        values.extend([new_diem_tb, new_xep_loai, datetime.now(), sem2_id])
-                        c.execute(update_query, values)
-                    
-                    conn.commit()
-                    st.success("Đã cập nhật điểm thành công!")
-                    st.rerun()
         else:
             st.warning("Không tìm thấy sinh viên phù hợp.")
     
@@ -1429,4 +1366,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
